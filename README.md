@@ -7,6 +7,8 @@
 
 A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).
 
+![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
+
 ## Test App
 A test project using the ClusterNode class is included which will help you understand and exercise the class library.  You can spawn two instances of the TestNode app using opposing ports to test the functionality.  The TestNode app hard-codes to localhost.
 
