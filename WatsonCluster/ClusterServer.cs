@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using WatsonTcp;
@@ -29,7 +30,7 @@ namespace WatsonCluster
 
         public ClusterServer(int port, bool debug, Func<string, bool> clientConnected, Func<string, bool> clientDisconnected, Func<string, byte[], bool> messageReceived)
         {
-            if (port < 1) throw new ArgumentOutOfRangeException(nameof(port));
+            if (port < IPEndPoint.MinPort || port > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(port));
             if (clientConnected == null) throw new ArgumentNullException(nameof(clientConnected));
             if (clientDisconnected == null) throw new ArgumentNullException(nameof(clientDisconnected));
             if (messageReceived == null) throw new ArgumentNullException(nameof(messageReceived));

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +33,7 @@ namespace WatsonCluster
         public ClusterClient(string serverIp, int serverPort, bool debug, Func<bool> clusterHealthy, Func<bool> clusterUnhealthy, Func<byte[], bool> messageReceived)
         {
             if (String.IsNullOrEmpty(serverIp)) throw new ArgumentNullException(nameof(serverIp));
-            if (serverPort < 1) throw new ArgumentOutOfRangeException(nameof(serverPort));
+            if (serverPort < IPEndPoint.MinPort || serverPort > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(serverPort));
             if (clusterHealthy == null) throw new ArgumentNullException(nameof(clusterHealthy));
             if (clusterUnhealthy == null) throw new ArgumentNullException(nameof(clusterUnhealthy));
             if (messageReceived == null) throw new ArgumentNullException(nameof(messageReceived));
