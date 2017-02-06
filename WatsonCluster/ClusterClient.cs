@@ -94,7 +94,7 @@ namespace WatsonCluster
                 {
                     if (!firstRun)
                     {
-                        Thread.Sleep(1000);
+                        Task.Delay(1000);
                         firstRun = false;
                     }
 

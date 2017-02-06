@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>WatsonCluster</id>
+        <version>1.0.3</version>
+        <title>WatsonCluster</title>
+        <authors>jchristn</authors>
+        <owners>jchristn</owners>
+        <licenseUrl>https://github.com/jchristn/WatsonCluster/blob/master/LICENSE.TXT</licenseUrl>
+        <projectUrl>https://github.com/jchristn/WatsonCluster</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).</description>
+        <summary>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected</summary>
+        <releaseNotes>NuGet update to WatsonTcp 1.0.5</releaseNotes>
+        <copyright>(c) 2016 Marauder Software Inc</copyright>
+        <dependencies>
+            <dependency id="WatsonTcp" version="1.0.5" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="..\WatsonCluster\bin\Release\WatsonCluster.dll" target="lib\WatsonCluster.dll" />
+        <file src="..\WatsonCluster\bin\Release\WatsonCluster.pdb" target="lib\WatsonCluster.pdb" />
+    </files>
+</package>
