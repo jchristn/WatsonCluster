@@ -65,15 +65,36 @@ namespace WatsonCluster
 
         public bool IsHealthy()
         {
-            if (Server == null
-                || Client == null
-                || String.IsNullOrEmpty(CurrPeerIpPort))
+            if (Server == null)
             {
+                if (Debug) Console.WriteLine("Server object is null");
+                return false;
+            }
+            
+            if (Client == null)
+            {
+                if (Debug) Console.WriteLine("Client object is null");
                 return false;
             }
 
-            if (!Server.IsConnected(CurrPeerIpPort)) return false;
-            if (Client.IsConnected()) return true;
+            if (String.IsNullOrEmpty(CurrPeerIpPort))
+            {
+                if (Debug) Console.WriteLine("Peer information is null");
+                return false;
+            }
+
+            if (!Server.IsConnected(CurrPeerIpPort))
+            {
+                if (Debug) Console.WriteLine("Server peer is not connected");
+                return false;
+            }
+
+            if (Client.IsConnected())
+            {
+                if (Debug) Console.WriteLine("Client is not connected");
+                return true;
+            }
+
             return false;
         }
 

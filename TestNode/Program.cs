@@ -23,7 +23,7 @@ namespace TestNode
                 remotePort = Convert.ToInt32(Console.ReadLine());
             }
 
-            n = new ClusterNode("localhost", remotePort, localPort, ClusterHealthy, ClusterUnhealthy, MessageReceived, true);
+            n = new ClusterNode("localhost", remotePort, localPort, ClusterHealthy, ClusterUnhealthy, MessageReceived, false);
 
             bool runForever = true;
             while (runForever)
