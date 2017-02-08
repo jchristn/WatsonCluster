@@ -59,7 +59,7 @@ namespace WatsonCluster
                 if (Debug) Console.WriteLine("Client object is null");
                 return false;
             }
-            return Wtcp.Connected;
+            return Wtcp.IsConnected();
         }
 
         public bool Send(byte[] data)
@@ -70,7 +70,7 @@ namespace WatsonCluster
                 return false;
             }
 
-            if (Wtcp.Connected)
+            if (Wtcp.IsConnected())
             {
                 Wtcp.Send(data);
                 return true;
@@ -92,22 +92,18 @@ namespace WatsonCluster
             {
                 try
                 {
-                    Task.Delay(1000).Wait();
-
                     if (Wtcp == null)
                     {
                         if (Debug) Console.WriteLine("Attempting connection to " + ServerIp + ":" + ServerPort);
                         Wtcp = new WatsonTcpClient(ServerIp, ServerPort, ServerConnected, ServerDisconnected, MsgReceived, Debug);
-                        continue;
                     }
-
-                    if (!Wtcp.Connected)
+                    else if (!Wtcp.IsConnected())
                     {
                         if (Debug) Console.WriteLine("Attempting reconnect to " + ServerIp + ":" + ServerPort);
                         Wtcp.Dispose();
                         Wtcp = new WatsonTcpClient(ServerIp, ServerPort, ServerConnected, ServerDisconnected, MsgReceived, Debug);
-                        continue;
                     }
+                    Thread.Sleep(1000);
                 }
                 catch (Exception e)
                 {
