@@ -8,7 +8,7 @@ using WatsonTcp;
 
 namespace WatsonCluster
 {
-    public class ClusterServer
+    public class ClusterServer : IDisposable
     {
         #region Public-Members
 
@@ -77,9 +77,23 @@ namespace WatsonCluster
             }
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         #endregion
 
         #region Private-Methods
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (Wtcp != null) Wtcp.Dispose();
+            }
+        }
 
         private bool ClientConnect(string ipPort)
         {

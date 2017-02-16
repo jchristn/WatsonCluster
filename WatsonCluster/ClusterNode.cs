@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WatsonCluster
 {
-    public class ClusterNode
+    public class ClusterNode : IDisposable
     {
         #region Public-Members
 
@@ -124,9 +124,24 @@ namespace WatsonCluster
             return false;
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         #endregion
 
         #region Private-Methods
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (Server != null) Server.Dispose();
+                if (Client != null) Client.Dispose();
+            }
+        }
 
         private bool SrvClientConnect(string ipPort)
         {
