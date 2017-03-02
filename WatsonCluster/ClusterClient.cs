@@ -82,6 +82,26 @@ namespace WatsonCluster
             }
         }
 
+        public async Task<bool> SendAsync(byte[] data)
+        {
+            if (Wtcp == null)
+            {
+                if (Debug) Console.WriteLine("Client is null, cannot send");
+                return false;
+            }
+
+            if (Wtcp.IsConnected())
+            {
+                await Wtcp.SendAsync(data);
+                return true;
+            }
+            else
+            {
+                if (Debug) Console.WriteLine("Client is not connected, cannot send");
+                return false;
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);

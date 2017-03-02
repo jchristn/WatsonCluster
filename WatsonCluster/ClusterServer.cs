@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
@@ -68,6 +69,25 @@ namespace WatsonCluster
             if (Wtcp.IsClientConnected(ipPort))
             {
                 Wtcp.Send(ipPort, data);
+                return true;
+            }
+            else
+            {
+                if (Debug) Console.WriteLine("Server is not connected, cannot send");
+                return false;
+            }
+        }
+
+        public async Task<bool> SendAsync(string ipPort, byte[] data)
+        {
+            if (Wtcp == null)
+            {
+                if (Debug) Console.WriteLine("Server is null, cannot send");
+                return false;
+            }
+            if (Wtcp.IsClientConnected(ipPort))
+            {
+                await Wtcp.SendAsync(ipPort, data);
                 return true;
             }
             else
