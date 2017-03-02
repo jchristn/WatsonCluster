@@ -124,6 +124,33 @@ namespace WatsonCluster
             return false;
         }
 
+
+        public async Task<bool> SendAsync(byte[] data)
+        {
+            if (Client != null)
+            {
+                if (Client.IsConnected())
+                {
+                    return await Client.SendAsync(data);
+                }
+            }
+            else if (String.IsNullOrEmpty(CurrPeerIpPort))
+            {
+                if (Debug) Console.WriteLine("No peer connected");
+                return false;
+            }
+            else if (Server != null)
+            {
+                if (Server.IsConnected(CurrPeerIpPort))
+                {
+                    return await Server.SendAsync(CurrPeerIpPort, data);
+                }
+            }
+
+            if (Debug) Console.WriteLine("Neither server or client are healthy");
+            return false;
+        }
+
         public void Dispose()
         {
             Dispose(true);
