@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace WatsonCluster
 {
+    /// <summary>
+    /// A Watson cluster node, which includes both a cluster server and client.
+    /// </summary>
     public class ClusterNode : IDisposable
     {
         #region Public-Members
@@ -31,6 +34,16 @@ namespace WatsonCluster
 
         #region Constructors-and-Factories
 
+        /// <summary>
+        /// Start the cluster node.
+        /// </summary>
+        /// <param name="peerIp">The IP address of the peer cluster node.</param>
+        /// <param name="peerPort">The TCP port of the peer cluster node.</param>
+        /// <param name="localPort">The TCP port on which the cluster server should listen.</param>
+        /// <param name="clusterHealthy">Function to be called when the cluster becomes healthy.</param>
+        /// <param name="clusterUnhealthy">Function to be called when the cluster becomes unhealthy.</param>
+        /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
+        /// <param name="debug">Enable or disable debug logging to the console.</param>
         public ClusterNode(
             string peerIp, 
             int peerPort, 
@@ -63,6 +76,10 @@ namespace WatsonCluster
 
         #region Public-Methods
 
+        /// <summary>
+        /// Determine if the cluster is healthy (i.e. both nodes are bidirectionally connected).
+        /// </summary>
+        /// <returns>True if healthy.</returns>
         public bool IsHealthy()
         {
             if (Server == null)
@@ -97,7 +114,12 @@ namespace WatsonCluster
 
             return false;
         }
-
+        
+        /// <summary>
+        /// Send a message to the peer node.
+        /// </summary>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
         public bool Send(byte[] data)
         {
             if (Client != null)
@@ -124,7 +146,11 @@ namespace WatsonCluster
             return false;
         }
 
-
+        /// <summary>
+        /// Send a message to the peer node, asynchronously.
+        /// </summary>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
         public async Task<bool> SendAsync(byte[] data)
         {
             if (Client != null)
@@ -151,6 +177,9 @@ namespace WatsonCluster
             return false;
         }
 
+        /// <summary>
+        /// Destroy the cluster node and release resources.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);

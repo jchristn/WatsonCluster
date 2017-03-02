@@ -9,6 +9,9 @@ using WatsonTcp;
 
 namespace WatsonCluster
 {
+    /// <summary>
+    /// The Watson cluster client node (initiates connections to server).  Use ClusterNode, which encapsulates this class.
+    /// </summary>
     public class ClusterClient : IDisposable
     {
         #region Public-Members
@@ -30,6 +33,15 @@ namespace WatsonCluster
 
         #region Constructors-and-Factories
 
+        /// <summary>
+        /// Start the cluster client.
+        /// </summary>
+        /// <param name="serverIp">The IP address of the peer server.</param>
+        /// <param name="serverPort">The TCP port of the peer server.</param>
+        /// <param name="debug">Enable or disable debug logging to the console.</param>
+        /// <param name="clusterHealthy">Function to be called when the cluster becomes healthy.</param>
+        /// <param name="clusterUnhealthy">Function to be called when the cluster becomes unhealthy.</param>
+        /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
         public ClusterClient(string serverIp, int serverPort, bool debug, Func<bool> clusterHealthy, Func<bool> clusterUnhealthy, Func<byte[], bool> messageReceived)
         {
             if (String.IsNullOrEmpty(serverIp)) throw new ArgumentNullException(nameof(serverIp));
@@ -52,6 +64,10 @@ namespace WatsonCluster
 
         #region Public-Methods
 
+        /// <summary>
+        /// Determines if the client is connected to the peer server.
+        /// </summary>
+        /// <returns>True if connected.</returns>
         public bool IsConnected()
         {
             if (Wtcp == null) 
@@ -62,6 +78,11 @@ namespace WatsonCluster
             return Wtcp.IsConnected();
         }
 
+        /// <summary>
+        /// Send a message to the connected server.
+        /// </summary>
+        /// <param name="data">Data to send to the server.</param>
+        /// <returns>True if successful.</returns>
         public bool Send(byte[] data)
         {
             if (Wtcp == null)
@@ -82,6 +103,11 @@ namespace WatsonCluster
             }
         }
 
+        /// <summary>
+        /// Send a message to the server, asynchronously.
+        /// </summary>
+        /// <param name="data">Data to send to the server.</param>
+        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
         public async Task<bool> SendAsync(byte[] data)
         {
             if (Wtcp == null)
@@ -102,6 +128,9 @@ namespace WatsonCluster
             }
         }
 
+        /// <summary>
+        /// Destroy the client and release resources.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);

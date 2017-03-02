@@ -36,11 +36,12 @@ namespace TestNode
                 {
                     case "?":
                         Console.WriteLine("---");
-                        Console.WriteLine(" q       quit");
-                        Console.WriteLine(" ?       this menu");
-                        Console.WriteLine(" cls     clear screen");
-                        Console.WriteLine(" send    send message to peer");
-                        Console.WriteLine(" health  display cluster health");
+                        Console.WriteLine(" q          quit");
+                        Console.WriteLine(" ?          this menu");
+                        Console.WriteLine(" cls        clear screen");
+                        Console.WriteLine(" send       send message to peer");
+                        Console.WriteLine(" sendasync  send message to peer, asynchronously");
+                        Console.WriteLine(" health     display cluster health");
                         break;
 
                     case "q":
@@ -55,6 +56,19 @@ namespace TestNode
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
                         if (Send(Encoding.UTF8.GetBytes(userInput)))
+                        {
+                            Console.WriteLine("Success");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed");
+                        }
+                        break;
+
+                    case "sendasync":
+                        Console.Write("Data: ");
+                        userInput = Console.ReadLine();
+                        if (SendAsync(Encoding.UTF8.GetBytes(userInput)))
                         {
                             Console.WriteLine("Success");
                         }
@@ -94,6 +108,12 @@ namespace TestNode
         static bool Send(byte[] data)
         {
             return n.Send(data);
+        }
+
+        static bool SendAsync(byte[] data)
+        {
+            n.SendAsync(data);
+            return true;
         }
     }
 }
