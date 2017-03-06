@@ -45,11 +45,11 @@ namespace WatsonCluster
         /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
         /// <param name="debug">Enable or disable debug logging to the console.</param>
         public ClusterNode(
-            string peerIp, 
-            int peerPort, 
-            int localPort, 
-            Func<bool> clusterHealthy, 
-            Func<bool> clusterUnhealthy, 
+            string peerIp,
+            int peerPort,
+            int localPort,
+            Func<bool> clusterHealthy,
+            Func<bool> clusterUnhealthy,
             Func<byte[], bool> messageReceived,
             bool debug)
         {
@@ -69,6 +69,49 @@ namespace WatsonCluster
             Debug = debug;
 
             Server = new ClusterServer(PeerIp, LocalPort, Debug, SrvClientConnect, SrvClientDisconnect, SrvMsgReceived);
+            Client = new ClusterClient(PeerIp, PeerPort, Debug, CliServerConnect, CliServerDisconnect, CliMsgReceived);
+        }
+
+        /// <summary>
+        /// Start the cluster node.
+        /// </summary>
+        /// <param name="peerIp">The IP address of the peer cluster node.</param>
+        /// <param name="peerPort">The TCP port of the peer cluster node.</param>
+        /// <param name="localPort">The TCP port on which the cluster server should listen.</param>
+        /// <param name="permittedIps">The list of IP addresses allowed to connect.</param>
+        /// <param name="clusterHealthy">Function to be called when the cluster becomes healthy.</param>
+        /// <param name="clusterUnhealthy">Function to be called when the cluster becomes unhealthy.</param>
+        /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
+        /// <param name="debug">Enable or disable debug logging to the console.</param>
+        public ClusterNode(
+            string peerIp,
+            int peerPort,
+            int localPort,
+            IEnumerable<string> permittedIps,
+            Func<bool> clusterHealthy,
+            Func<bool> clusterUnhealthy,
+            Func<byte[], bool> messageReceived,
+            bool debug)
+        {
+            if (String.IsNullOrEmpty(peerIp)) throw new ArgumentNullException(nameof(peerIp));
+            if (peerPort < 1) throw new ArgumentOutOfRangeException(nameof(peerPort));
+            if (localPort < 1) throw new ArgumentOutOfRangeException(nameof(localPort));
+            if (clusterHealthy == null) throw new ArgumentNullException(nameof(clusterHealthy));
+            if (clusterUnhealthy == null) throw new ArgumentNullException(nameof(clusterUnhealthy));
+            if (messageReceived == null) throw new ArgumentNullException(nameof(messageReceived));
+
+            PeerIp = peerIp;
+            PeerPort = peerPort;
+            LocalPort = localPort;
+            ClusterHealthy = clusterHealthy;
+            ClusterUnhealthy = clusterUnhealthy;
+            MessageReceived = messageReceived;
+            Debug = debug;
+
+            List<string> PermittedIps = null;
+            if (permittedIps != null && permittedIps.Count() > 0) permittedIps = new List<string>(permittedIps);
+
+            Server = new ClusterServer(PermittedIps, LocalPort, Debug, SrvClientConnect, SrvClientDisconnect, SrvMsgReceived);
             Client = new ClusterClient(PeerIp, PeerPort, Debug, CliServerConnect, CliServerDisconnect, CliMsgReceived);
         }
 

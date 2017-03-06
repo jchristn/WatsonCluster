@@ -61,6 +61,34 @@ namespace WatsonCluster
             Wtcp = new WatsonTcpServer(null, Port, permittedIps, ClientConnect, ClientDisconnect, MsgReceived, Debug);
         }
 
+        /// <summary>
+        /// Start the cluster server.
+        /// </summary>
+        /// <param name="permittedIps">The list of IP addresses allowed to connect.</param>
+        /// <param name="port">The TCP port on which the cluster server should listen.</param>
+        /// <param name="debug">Enable or disable debug logging to the console.</param>
+        /// <param name="clientConnected">Function to be called when the peer connects.</param>
+        /// <param name="clientDisconnected">Function to be called when the peer disconnects.</param>
+        /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
+        public ClusterServer(IEnumerable<string> permittedIps, int port, bool debug, Func<string, bool> clientConnected, Func<string, bool> clientDisconnected, Func<string, byte[], bool> messageReceived)
+        {
+            if (port < IPEndPoint.MinPort || port > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(port));
+            if (clientConnected == null) throw new ArgumentNullException(nameof(clientConnected));
+            if (clientDisconnected == null) throw new ArgumentNullException(nameof(clientDisconnected));
+            if (messageReceived == null) throw new ArgumentNullException(nameof(messageReceived));
+
+            Port = port;
+            Debug = debug;
+            ClientConnected = clientConnected;
+            ClientDisconnected = clientDisconnected;
+            MessageReceived = messageReceived;
+
+            List<string> PermittedIps = null;
+            if (permittedIps != null && permittedIps.Count() > 0) PermittedIps = new List<string>(permittedIps);
+            
+            Wtcp = new WatsonTcpServer(null, Port, PermittedIps, ClientConnect, ClientDisconnect, MsgReceived, Debug);
+        }
+
         #endregion
 
         #region Public-Methods
