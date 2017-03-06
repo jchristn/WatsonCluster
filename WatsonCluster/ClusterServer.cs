@@ -35,13 +35,15 @@ namespace WatsonCluster
         /// <summary>
         /// Start the cluster server.
         /// </summary>
+        /// <param name="peerIp">The IP address of the peer client.</param>
         /// <param name="port">The TCP port on which the cluster server should listen.</param>
         /// <param name="debug">Enable or disable debug logging to the console.</param>
         /// <param name="clientConnected">Function to be called when the peer connects.</param>
         /// <param name="clientDisconnected">Function to be called when the peer disconnects.</param>
         /// <param name="messageReceived">Function to be called when a message is received from the peer.</param>
-        public ClusterServer(int port, bool debug, Func<string, bool> clientConnected, Func<string, bool> clientDisconnected, Func<string, byte[], bool> messageReceived)
+        public ClusterServer(string peerIp, int port, bool debug, Func<string, bool> clientConnected, Func<string, bool> clientDisconnected, Func<string, byte[], bool> messageReceived)
         {
+            if (String.IsNullOrEmpty(peerIp)) throw new ArgumentNullException(nameof(peerIp));
             if (port < IPEndPoint.MinPort || port > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(port));
             if (clientConnected == null) throw new ArgumentNullException(nameof(clientConnected));
             if (clientDisconnected == null) throw new ArgumentNullException(nameof(clientDisconnected));
@@ -52,7 +54,11 @@ namespace WatsonCluster
             ClientConnected = clientConnected;
             ClientDisconnected = clientDisconnected;
             MessageReceived = messageReceived;
-            Wtcp = new WatsonTcpServer(null, Port, ClientConnect, ClientDisconnect, MsgReceived, Debug);
+
+            List<string> permittedIps = new List<string>();
+            permittedIps.Add(peerIp);
+
+            Wtcp = new WatsonTcpServer(null, Port, permittedIps, ClientConnect, ClientDisconnect, MsgReceived, Debug);
         }
 
         #endregion

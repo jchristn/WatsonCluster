@@ -68,7 +68,7 @@ namespace WatsonCluster
             MessageReceived = messageReceived;
             Debug = debug;
 
-            Server = new ClusterServer(LocalPort, Debug, SrvClientConnect, SrvClientDisconnect, SrvMsgReceived);
+            Server = new ClusterServer(PeerIp, LocalPort, Debug, SrvClientConnect, SrvClientDisconnect, SrvMsgReceived);
             Client = new ClusterClient(PeerIp, PeerPort, Debug, CliServerConnect, CliServerDisconnect, CliMsgReceived);
         }
 
