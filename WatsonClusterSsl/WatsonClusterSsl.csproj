@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4710E5B8-1CE9-4C3C-89F5-CB8EC777F7B2}</ProjectGuid>
+    <ProjectGuid>{D9266160-25E9-45F2-8EC2-0F4E253C9AF8}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WatsonCluster</RootNamespace>
-    <AssemblyName>WatsonCluster</AssemblyName>
+    <RootNamespace>WatsonClusterSsl</RootNamespace>
+    <AssemblyName>WatsonClusterSsl</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -20,7 +20,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>WatsonCluster.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -29,7 +28,6 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>WatsonCluster.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -46,14 +44,13 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClusterNode.cs" />
-    <Compile Include="ClusterServer.cs" />
-    <Compile Include="ClusterClient.cs" />
+    <Compile Include="ClusterClientSsl.cs" />
+    <Compile Include="ClusterNodeSsl.cs" />
+    <Compile Include="ClusterServerSsl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="WatsonCluster.ruleset" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
