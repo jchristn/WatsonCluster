@@ -10,10 +10,13 @@ A simple C# class using Watson TCP to enable a one-to-one high availability clus
 ![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
 
 ## Contributions
-Thanks to @brudo for adding async support to WatsonCluster (v1.0.6)!
+Thanks to @brudo for adding async support to WatsonCluster (v1.0.6) and all of your help from then!
+
+## SSL Support
+SSL support was introduced in v1.1.0.  Use the ClusterNodeSsl class and refer to the TestNodeSsl project for an example.
 
 ## Test App
-A test project using the ClusterNode class is included which will help you understand and exercise the class library.  You can spawn two instances of the TestNode app using opposing ports to test the functionality.  The TestNode app hard-codes to localhost.
+A test project using the ClusterNode class is included which will help you understand and exercise the class library.  You can spawn two instances of the TestNode app using opposing ports to test the functionality.  The TestNode app hard-codes to localhost.  
 
 ```
 Node 1
