@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
-namespace WatsonClusterSsl
+namespace WatsonCluster
 {
     /// <summary>
     /// The Watson cluster server node (receives connections from clients) with SSL.  Use ClusterNode, which encapsulates this class.
@@ -15,6 +15,11 @@ namespace WatsonClusterSsl
     public class ClusterServerSsl : IDisposable
     {
         #region Public-Members
+
+        /// <summary>
+        /// Enable or disable mutual authentication with SSL.
+        /// </summary>
+        public bool MutuallyAuthenticate = false;
 
         #endregion
 
@@ -68,7 +73,7 @@ namespace WatsonClusterSsl
             List<string> permittedIps = new List<string>();
             permittedIps.Add(peerIp);
 
-            Wtcp = new WatsonTcpSslServer(null, Port, CertFile, CertPass, AcceptInvalidCerts, permittedIps, ClientConnect, ClientDisconnect, MsgReceived, Debug);
+            Wtcp = new WatsonTcpSslServer(null, Port, CertFile, CertPass, AcceptInvalidCerts, MutuallyAuthenticate, ClientConnect, ClientDisconnect, MsgReceived, Debug);
         }
 
         /// <summary>
@@ -103,7 +108,7 @@ namespace WatsonClusterSsl
             List<string> PermittedIps = null;
             if (permittedIps != null && permittedIps.Count() > 0) PermittedIps = new List<string>(permittedIps);
 
-            Wtcp = new WatsonTcpSslServer(null, Port, CertFile, CertPass, AcceptInvalidCerts, PermittedIps, ClientConnect, ClientDisconnect, MsgReceived, Debug);
+            Wtcp = new WatsonTcpSslServer(null, Port, CertFile, CertPass, AcceptInvalidCerts, MutuallyAuthenticate, ClientConnect, ClientDisconnect, MsgReceived, Debug);
         }
 
         #endregion

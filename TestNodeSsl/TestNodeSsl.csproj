@@ -53,15 +53,15 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\WatsonClusterSsl\WatsonClusterSsl.csproj">
-      <Project>{d9266160-25e9-45f2-8ec2-0f4e253c9af8}</Project>
-      <Name>WatsonClusterSsl</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="test-certificate.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WatsonCluster\WatsonCluster.csproj">
+      <Project>{b0cbc7c2-2a4e-4dd3-9679-830b828cb976}</Project>
+      <Name>WatsonCluster</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

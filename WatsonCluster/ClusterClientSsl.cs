@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
-namespace WatsonClusterSsl
+namespace WatsonCluster
 {
     /// <summary>
     /// The Watson cluster client node (initiates connections to server) with SSL.  Use ClusterNode, which encapsulates this class.
@@ -15,6 +15,11 @@ namespace WatsonClusterSsl
     public class ClusterClientSsl : IDisposable
     {
         #region Public-Members
+
+        /// <summary>
+        /// Enable or disable mutual authentication with SSL.
+        /// </summary>
+        public bool MutuallyAuthenticate = false;
 
         #endregion
 
@@ -177,13 +182,13 @@ namespace WatsonClusterSsl
                     if (Wtcp == null)
                     {
                         if (Debug) Console.WriteLine("Attempting connection to " + ServerIp + ":" + ServerPort);
-                        Wtcp = new WatsonTcpSslClient(ServerIp, ServerPort, CertFile, CertPass, AcceptInvalidCerts, ServerConnected, ServerDisconnected, MsgReceived, Debug);
+                        Wtcp = new WatsonTcpSslClient(ServerIp, ServerPort, CertFile, CertPass, AcceptInvalidCerts, MutuallyAuthenticate, ServerConnected, ServerDisconnected, MsgReceived, Debug);
                     }
                     else if (!Wtcp.IsConnected())
                     {
                         if (Debug) Console.WriteLine("Attempting reconnect to " + ServerIp + ":" + ServerPort);
                         Wtcp.Dispose();
-                        Wtcp = new WatsonTcpSslClient(ServerIp, ServerPort, CertFile, CertPass, AcceptInvalidCerts, ServerConnected, ServerDisconnected, MsgReceived, Debug);
+                        Wtcp = new WatsonTcpSslClient(ServerIp, ServerPort, CertFile, CertPass, AcceptInvalidCerts, MutuallyAuthenticate, ServerConnected, ServerDisconnected, MsgReceived, Debug);
                     }
                     Thread.Sleep(1000);
                 }

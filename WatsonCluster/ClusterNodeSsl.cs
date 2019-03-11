@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WatsonClusterSsl
+namespace WatsonCluster
 {
     /// <summary>
     /// A Watson cluster node with SSL, which includes both a cluster server and client.

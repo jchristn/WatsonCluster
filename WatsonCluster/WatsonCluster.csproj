@@ -1,66 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4710E5B8-1CE9-4C3C-89F5-CB8EC777F7B2}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WatsonCluster</RootNamespace>
-    <AssemblyName>WatsonCluster</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).</Description>
+    <Version>1.1.1</Version>
+    <Authors>Joel Christner</Authors>
+    <Copyright>(c)2019 Joel Christner</Copyright>
+    <PackageProjectUrl>https://github.com/jchristn/watsoncluster</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/jchristn/watsoncluster</RepositoryUrl>
+    <RepositoryType>Github</RepositoryType>
+    <PackageLicenseUrl>https://github.com/jchristn/WatsonCluster/blob/master/LICENSE.TXT</PackageLicenseUrl>
+    <PackageTags>tcp rpc api cluster high availability</PackageTags>
+    <PackageReleaseNotes>Retarget to .NET Core 2.0 and .NET Framework 4.5.2</PackageReleaseNotes>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>WatsonCluster.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>WatsonCluster.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-    <Reference Include="WatsonTcp, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\WatsonTcp.1.1.0\lib\WatsonTcp.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
+    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
+    <PackageReference Include="WatsonTcp" Version="1.1.7" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="ClusterNode.cs" />
-    <Compile Include="ClusterServer.cs" />
-    <Compile Include="ClusterClient.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-    <None Include="WatsonCluster.ruleset" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

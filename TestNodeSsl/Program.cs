@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using WatsonClusterSsl;
+using WatsonCluster;
 
 namespace TestNodeSsl
 {
@@ -118,7 +118,7 @@ namespace TestNodeSsl
 
         static bool SendAsync(byte[] data)
         {
-            n.SendAsync(data);
+            n.SendAsync(data).Wait();
             return true;
         }
     }

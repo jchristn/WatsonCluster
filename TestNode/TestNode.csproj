@@ -54,7 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WatsonCluster\WatsonCluster.csproj">
-      <Project>{4710e5b8-1ce9-4c3c-89f5-cb8ec777f7b2}</Project>
+      <Project>{b0cbc7c2-2a4e-4dd3-9679-830b828cb976}</Project>
       <Name>WatsonCluster</Name>
     </ProjectReference>
   </ItemGroup>
