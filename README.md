@@ -28,18 +28,18 @@ using System.IO;
 
 // Initialize
 ClusterNode node = new ClusterNode(
-	"127.0.0.1", 	// listener IP
-	8000, 			// listener port
-	"127.0.0.1", 	// peer IP
-	8001, 			// peer port
-	null, 			// PFX certificate filename, for SSL
-	null);			// PFX certificate file password
+  "127.0.0.1",  // listener IP
+  8000,         // listener port
+  "127.0.0.1",  // peer IP
+  8001,         // peer port
+  null,         // PFX certificate filename, for SSL
+  null);        // PFX certificate file password
 
 // Set configurable parameters
-n.AcceptInvalidCertificates = true;		// if using SSL
-n.MutuallyAuthenticate = true;			// if using SSL
-n.Debug = false;						// console debugging
-n.ReadDataStream = false;				// set to true to use MessageReceived, else use StreamReceived
+n.AcceptInvalidCertificates = true;   // if using SSL
+n.MutuallyAuthenticate = true;        // if using SSL
+n.Debug = false;                      // console debugging
+n.ReadDataStream = false;             // set to true to use MessageReceived, else use StreamReceived
 
 // Set your callbacks
 n.MessageReceived = MessageReceived;
@@ -52,30 +52,30 @@ n.Start();
 
 static bool ClusterHealthy()
 {
-	// handle cluster healthy events
-	return true;
+  // handle cluster healthy events
+  return true;
 }
 
 static bool ClusterUnhealth()
 {
-	// handle cluster unhealthy events
-	// don't worry, we'll try reconnecting on your behalf!
-	return true;
+  // handle cluster unhealthy events
+  // don't worry, we'll try reconnecting on your behalf!
+  return true;
 }
 
 static bool MessageReceived(byte[] data)
 {
-	// messages will appear here when ReadDataStream = true
-	// process your message
-	return true;
+  // messages will appear here when ReadDataStream = true
+  // process your message
+  return true;
 }
 
 static bool StreamReceived(long contentLength, byte[] data)
 {
-	// messages will appear here when using ReadDataStream = false
-	// read contentLength bytes from stream
-	// process your message
-	return true;
+  // messages will appear here when using ReadDataStream = false
+  // read contentLength bytes from stream
+  // process your message
+  return true;
 }
 ```
 
