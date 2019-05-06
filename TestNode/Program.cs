@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,7 +24,17 @@ namespace TestNode
                 remotePort = Convert.ToInt32(Console.ReadLine());
             }
 
-            n = new ClusterNode("127.0.0.1", remotePort, localPort, ClusterHealthy, ClusterUnhealthy, MessageReceived, false);
+            n = new ClusterNode("127.0.0.1", localPort, "127.0.0.1", remotePort, null, null);
+            n.AcceptInvalidCertificates = true;
+            n.MutuallyAuthenticate = true;
+            n.Debug = false;
+            n.ReadDataStream = false;
+            n.MessageReceived = MessageReceived;
+            n.StreamReceived = StreamReceived;
+            n.ClusterHealthy = ClusterHealthy;
+            n.ClusterUnhealthy = ClusterUnhealthy;
+
+            n.Start();
 
             bool runForever = true;
             while (runForever)
@@ -32,16 +43,21 @@ namespace TestNode
                 string userInput = Console.ReadLine();
                 if (String.IsNullOrEmpty(userInput)) continue;
 
+                byte[] data = null;
+                MemoryStream ms = null;
+
                 switch (userInput)
                 {
                     case "?":
                         Console.WriteLine("---");
-                        Console.WriteLine(" q          quit");
-                        Console.WriteLine(" ?          this menu");
-                        Console.WriteLine(" cls        clear screen");
-                        Console.WriteLine(" send       send message to peer");
-                        Console.WriteLine(" sendasync  send message to peer, asynchronously");
-                        Console.WriteLine(" health     display cluster health");
+                        Console.WriteLine(" q                   quit");
+                        Console.WriteLine(" ?                   this menu");
+                        Console.WriteLine(" cls                 clear screen");
+                        Console.WriteLine(" send bytes          send message to peer");
+                        Console.WriteLine(" send bytes async    send message to peer, asynchronously");
+                        Console.WriteLine(" send stream         send message to peer using a stream");
+                        Console.WriteLine(" send stream async   send message to peer using a stream, asynchronously");
+                        Console.WriteLine(" health              display cluster health");
                         break;
 
                     case "q":
@@ -52,10 +68,10 @@ namespace TestNode
                         Console.Clear();
                         break;
 
-                    case "send":
+                    case "send bytes":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
-                        if (Send(Encoding.UTF8.GetBytes(userInput)))
+                        if (n.Send(Encoding.UTF8.GetBytes(userInput)))
                         {
                             Console.WriteLine("Success");
                         }
@@ -65,10 +81,10 @@ namespace TestNode
                         }
                         break;
 
-                    case "sendasync":
+                    case "send bytes async":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
-                        if (SendAsync(Encoding.UTF8.GetBytes(userInput)))
+                        if (n.SendAsync(Encoding.UTF8.GetBytes(userInput)).Result)
                         {
                             Console.WriteLine("Success");
                         }
@@ -77,9 +93,39 @@ namespace TestNode
                             Console.WriteLine("Failed");
                         }
                         break;
+
+                    case "send stream":
+                        Console.Write("Data: ");
+                        userInput = Console.ReadLine();
+                        data = Encoding.UTF8.GetBytes(userInput);
+                        ms = new MemoryStream(data);
+                        if (n.Send(data.Length, ms))
+                        {
+                            Console.WriteLine("Success");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed");
+                        }
+                        break;
+
+                    case "send stream async":
+                        Console.Write("Data: ");
+                        userInput = Console.ReadLine();
+                        data = Encoding.UTF8.GetBytes(userInput);
+                        ms = new MemoryStream(data);
+                        if (n.SendAsync(data.Length, ms).Result)
+                        {
+                            Console.WriteLine("Success");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed");
+                        }
+                        break; 
 
                     case "health":
-                        Console.WriteLine("Healthy: " + n.IsHealthy());
+                        Console.WriteLine("Healthy: " + n.IsHealthy);
                         break;
                 }
             }
@@ -105,15 +151,33 @@ namespace TestNode
             return true;
         }
 
-        static bool Send(byte[] data)
+        static bool StreamReceived(long contentLength, Stream stream)
         {
-            return n.Send(data);
-        }
+            if (contentLength < 1) return true;
 
-        static bool SendAsync(byte[] data)
-        {
-            n.SendAsync(data);
+            int bytesRead = 0;
+            int bufferLen = 65536;
+            byte[] buffer = new byte[bufferLen];
+            long bytesRemaining = contentLength;
+
+            Console.WriteLine("NOTICE: stream received " + contentLength + " bytes:");
+
+            while (bytesRemaining > 0)
+            {
+                bytesRead = stream.Read(buffer, 0, buffer.Length);
+
+                if (bytesRead > 0)
+                {
+                    byte[] consoleBuffer = new byte[bytesRead];
+                    Buffer.BlockCopy(buffer, 0, consoleBuffer, 0, bytesRead);
+                    Console.Write(Encoding.UTF8.GetString(consoleBuffer));
+                }
+
+                bytesRemaining -= bytesRead;
+            }
+
+            Console.WriteLine(""); 
             return true;
-        }
+        } 
     }
 }
