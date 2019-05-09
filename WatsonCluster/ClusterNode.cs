@@ -51,9 +51,25 @@ namespace WatsonCluster
         public bool MutuallyAuthenticate = false;
 
         /// <summary>
+        /// Preshared key for TCP authentication.
+        /// </summary>
+        public string PresharedKey
+        {
+            get
+            {
+                return _PresharedKey;
+            }
+            set
+            {
+                if (!String.IsNullOrEmpty(value) && value.Length != 16) throw new ArgumentException("Preshared key must be exactly 16 bytes.");
+                _PresharedKey = value;
+            }
+        }
+
+        /// <summary>
         /// Method to call when the cluster is healthy.
         /// </summary>
-        public Func<bool> ClusterHealthy;
+        public Func<bool> ClusterHealthy = null;
 
         /// <summary>
         /// Method to call when the cluster is unhealthy.
@@ -123,8 +139,9 @@ namespace WatsonCluster
         private string _PeerIp;
         private int _PeerPort;
         private List<string> _PermittedIps;
-        private string _CertFile;
-        private string _CertPass; 
+        private string _CertFile = null;
+        private string _CertPass = null;
+        private string _PresharedKey = null;
         private ClusterServer _ClusterServer;
         private ClusterClient _ClusterClient;
 
@@ -221,6 +238,7 @@ namespace WatsonCluster
             _ClusterServer.Debug = Debug;
             _ClusterServer.ReadDataStream = ReadDataStream;
             _ClusterServer.ReadStreamBufferSize = ReadStreamBufferSize;
+            _ClusterServer.PresharedKey = PresharedKey;
             _ClusterServer.ClientConnected = SrvClientConnect;
             _ClusterServer.ClientDisconnected = SrvClientDisconnect;
             _ClusterServer.MessageReceived = SrvMsgReceived;
@@ -233,6 +251,7 @@ namespace WatsonCluster
             _ClusterClient.Debug = Debug;
             _ClusterClient.ReadDataStream = ReadDataStream;
             _ClusterClient.ReadStreamBufferSize = ReadStreamBufferSize;
+            _ClusterClient.PresharedKey = PresharedKey;
             _ClusterClient.ClusterHealthy = CliServerConnect;
             _ClusterClient.ClusterUnhealthy = CliServerDisconnect;
             _ClusterClient.MessageReceived = CliMsgReceived;

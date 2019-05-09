@@ -29,6 +29,7 @@ namespace TestNode
             n.MutuallyAuthenticate = true;
             n.Debug = false;
             n.ReadDataStream = false;
+            n.PresharedKey = "0000000000000000";
             n.MessageReceived = MessageReceived;
             n.StreamReceived = StreamReceived;
             n.ClusterHealthy = ClusterHealthy;

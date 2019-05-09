@@ -56,6 +56,22 @@ namespace WatsonCluster
         internal bool MutuallyAuthenticate = false;
 
         /// <summary>
+        /// Preshared key for TCP authentication.
+        /// </summary>
+        public string PresharedKey
+        {
+            get
+            {
+                return _PresharedKey;
+            }
+            set
+            {
+                if (!String.IsNullOrEmpty(value) && value.Length != 16) throw new ArgumentException("Preshared key must be exactly 16 bytes.");
+                _PresharedKey = value;
+            }
+        }
+
+        /// <summary>
         /// Method to call when a client connects.  The client IP:port is passed to the method, and a response of true is expected.
         /// </summary>
         internal Func<string, bool> ClientConnected = null;
@@ -86,7 +102,8 @@ namespace WatsonCluster
         private int _ListenerPort;
         private List<string> _PermittedIps;
         private string _CertFile;
-        private string _CertPass;  
+        private string _CertPass;
+        private string _PresharedKey;
         private WatsonTcpServer _WtcpServer;
 
         #endregion
@@ -171,14 +188,16 @@ namespace WatsonCluster
             }
 
             _WtcpServer.Debug = Debug;
-            _WtcpServer.ClientConnected = ClientConnect;
-            _WtcpServer.ClientDisconnected = ClientDisconnect;
-            _WtcpServer.MessageReceived = MsgReceived;
-            _WtcpServer.StreamReceived = StrmReceived;
             _WtcpServer.ReadDataStream = ReadDataStream;
             _WtcpServer.ReadStreamBufferSize = ReadStreamBufferSize;
             _WtcpServer.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _WtcpServer.MutuallyAuthenticate = MutuallyAuthenticate;
+            _WtcpServer.PresharedKey = PresharedKey;
+
+            _WtcpServer.ClientConnected = ClientConnect;
+            _WtcpServer.ClientDisconnected = ClientDisconnect;
+            _WtcpServer.MessageReceived = MsgReceived;
+            _WtcpServer.StreamReceived = StrmReceived;
 
             _WtcpServer.Start();
         }

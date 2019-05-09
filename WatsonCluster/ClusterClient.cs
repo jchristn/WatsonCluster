@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,6 +57,22 @@ namespace WatsonCluster
         internal bool MutuallyAuthenticate = false;
 
         /// <summary>
+        /// Preshared key for TCP authentication.
+        /// </summary>
+        public string PresharedKey
+        {
+            get
+            {
+                return _PresharedKey;
+            }
+            set
+            {
+                if (!String.IsNullOrEmpty(value) && value.Length != 16) throw new ArgumentException("Preshared key must be exactly 16 bytes.");
+                _PresharedKey = value;
+            }
+        }
+
+        /// <summary>
         /// Method to call when the cluster is healthy.
         /// </summary>
         internal Func<bool> ClusterHealthy = null;
@@ -95,7 +112,8 @@ namespace WatsonCluster
         private string _ServerIp;
         private int _ServerPort;
         private string _CertFile;
-        private string _CertPass; 
+        private string _CertPass;
+        private string _PresharedKey;
         private WatsonTcpClient _WtcpClient = null;
 
         #endregion
@@ -279,14 +297,19 @@ namespace WatsonCluster
                         }
 
                         _WtcpClient.Debug = Debug;
-                        _WtcpClient.ServerConnected = ServerConnected;
-                        _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.MessageReceived = MsgReceived;
-                        _WtcpClient.StreamReceived = StrmReceived;
                         _WtcpClient.ReadDataStream = ReadDataStream;
                         _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
+
+                        _WtcpClient.AuthenticationRequested = AuthenticationRequested;
+                        _WtcpClient.AuthenticationSucceeded = AuthenticationSucceeded;
+                        _WtcpClient.AuthenticationFailure = AuthenticationFailed;
+
+                        _WtcpClient.ServerConnected = ServerConnected;
+                        _WtcpClient.ServerDisconnected = ServerDisconnected;
+                        _WtcpClient.MessageReceived = MsgReceived;
+                        _WtcpClient.StreamReceived = StrmReceived;
 
                         _WtcpClient.Start();
                     }
@@ -301,15 +324,20 @@ namespace WatsonCluster
                             _WtcpClient = new WatsonTcpClient(_ServerIp, _ServerPort, _CertFile, _CertPass);
                         }
 
-                        _WtcpClient.Debug = Debug;
-                        _WtcpClient.ServerConnected = ServerConnected;
-                        _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.MessageReceived = MsgReceived;
-                        _WtcpClient.StreamReceived = StrmReceived;
+                        _WtcpClient.Debug = Debug; 
                         _WtcpClient.ReadDataStream = ReadDataStream;
                         _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
+
+                        _WtcpClient.AuthenticationRequested = AuthenticationRequested;
+                        _WtcpClient.AuthenticationSucceeded = AuthenticationSucceeded;
+                        _WtcpClient.AuthenticationFailure = AuthenticationFailed;
+
+                        _WtcpClient.ServerConnected = ServerConnected;
+                        _WtcpClient.ServerDisconnected = ServerDisconnected;
+                        _WtcpClient.MessageReceived = MsgReceived;
+                        _WtcpClient.StreamReceived = StrmReceived; 
 
                         if (Debug) Console.WriteLine("Attempting reconnect to " + _ServerIp + ":" + _ServerPort);
 
@@ -338,6 +366,24 @@ namespace WatsonCluster
             Console.WriteLine(" = Exception Source: " + e.Source);
             Console.WriteLine(" = Exception StackTrace: " + e.StackTrace);
             Console.WriteLine("================================================================================");
+        }
+
+        private string AuthenticationRequested()
+        {
+            Console.WriteLine("Authentication requested");
+            if (!String.IsNullOrEmpty(PresharedKey)) return PresharedKey;
+            throw new AuthenticationException("Preshared key not specified or not valid.");
+        }
+
+        private bool AuthenticationSucceeded()
+        {
+            Console.WriteLine("Authentication succeeded");
+            return true;
+        }
+
+        private bool AuthenticationFailed()
+        {
+            throw new AuthenticationException("Preshared key not specified or not valid.");
         }
 
         private bool ServerConnected()
