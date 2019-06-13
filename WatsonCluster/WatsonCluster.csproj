@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).</Description>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <Authors>Joel Christner</Authors>
     <Copyright>(c)2019 Joel Christner</Copyright>
     <PackageProjectUrl>https://github.com/jchristn/watsoncluster</PackageProjectUrl>
@@ -13,6 +13,7 @@
     <PackageLicenseUrl>https://github.com/jchristn/WatsonCluster/blob/master/LICENSE.TXT</PackageLicenseUrl>
     <PackageTags>tcp rpc api cluster high availability</PackageTags>
     <PackageReleaseNotes>Breaking changes: stream support for larger messages, class and API simplification, fixes to preshared key based authentication</PackageReleaseNotes>
+    <PackageIconUrl>https://raw.githubusercontent.com/jchristn/watsoncluster/master/assets/watson.ico</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>
