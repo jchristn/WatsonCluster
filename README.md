@@ -1,3 +1,5 @@
+![alt tag](https://github.com/jchristn/watsoncluster/blob/master/assets/watson.ico)
+
 # Watson Cluster
 
 [![][nuget-img]][nuget]
