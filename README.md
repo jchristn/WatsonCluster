@@ -11,10 +11,12 @@ A simple C# class using WatsonTCP to enable a one-to-one high availability clust
 
 ![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
 
-## New in v1.2.x
+## New in v2.0.x
 
-- Stream support to enable transmission of larger messages or more efficient processing
-- Simplified constructors, eliminated SSL-specific classes (merged together)
+- Breaking changes!  Simplified constructors and methods
+- Dependency updates
+- Bugfixes
+- Suppress redundant calls to ClusterUnhealthy (was called twice, once for client disconnect and once for server disconnect)
 
 ## Contributions
 
@@ -25,8 +27,7 @@ Thanks to @brudo for adding async support to WatsonCluster (v1.0.6) and all of y
 Refer to the ```TestNode``` project for a full example.
 
 ```
-using WatsonCluster;
-using System.IO;
+using WatsonCluster; 
 
 // Initialize
 ClusterNode node = new ClusterNode(
@@ -38,47 +39,36 @@ ClusterNode node = new ClusterNode(
   null);        // PFX certificate file password
 
 // Set configurable parameters
-n.AcceptInvalidCertificates = true;   // if using SSL
-n.MutuallyAuthenticate = true;        // if using SSL
-n.Debug = false;                      // console debugging
-n.ReadDataStream = false;             // set to true to use MessageReceived, else use StreamReceived
+node.AcceptInvalidCertificates = true;   // if using SSL
+node.MutuallyAuthenticate = true;        // always leave as false if not using SSL
+node.Debug = false;                      // console debugging
 
 // Set your callbacks
-n.MessageReceived = MessageReceived;
-n.StreamReceived = StreamReceived;
-n.ClusterHealthy = ClusterHealthy;
-n.ClusterUnhealthy = ClusterUnhealthy;
+node.MessageReceived = MessageReceived; 
+node.ClusterHealthy = ClusterHealthy;
+node.ClusterUnhealthy = ClusterUnhealthy;
+
+// Implement your callbacks
+static async Task ClusterHealthy()
+{
+    // handle cluster healthy events
+}
+static async Task ClusterUnhealthy()
+{
+    // handle cluster unhealthy events
+    // don't worry, we'll try reconnecting on your behalf!
+}
+static async Task MessageReceived(long contentLength, Stream stream)
+{
+    // read contentLength bytes from stream
+    // process your message
+}
 
 // Let's go!
-n.Start();
+node.Start();
 
-static bool ClusterHealthy()
-{
-  // handle cluster healthy events
-  return true;
-}
-
-static bool ClusterUnhealth()
-{
-  // handle cluster unhealthy events
-  // don't worry, we'll try reconnecting on your behalf!
-  return true;
-}
-
-static bool MessageReceived(byte[] data)
-{
-  // messages will appear here when ReadDataStream = true
-  // process your message
-  return true;
-}
-
-static bool StreamReceived(long contentLength, byte[] data)
-{
-  // messages will appear here when using ReadDataStream = false
-  // read contentLength bytes from stream
-  // process your message
-  return true;
-}
+// Send some messages
+await node.Send(Encoding.UTF8.GetBytes("Hello, world!"));
 ```
 
 ## Test App
@@ -112,6 +102,11 @@ mono --server myapp.exe
 ## Version History
 
 Notes from previous versions will be shown here.
+
+v1.2.x
+
+- Stream support to enable transmission of larger messages or more efficient processing
+- Simplified constructors, eliminated SSL-specific classes (merged together)
 
 v1.1.x
 

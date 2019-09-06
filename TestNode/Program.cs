@@ -1,43 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using WatsonCluster;
 
 namespace TestNode
 {
-    class Program
+    internal class Program
     {
-        static int localPort = 0;
-        static int remotePort = 0;
-        static ClusterNode n;
+        private static int localPort = 0;
+        private static int remotePort = 0;
+        private static ClusterNode node;
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            while (localPort < 1 || remotePort < 1)
-            {
-                Console.Write("Local port  : ");
-                localPort = Convert.ToInt32(Console.ReadLine());
-                Console.Write("Remote port : ");
-                remotePort = Convert.ToInt32(Console.ReadLine());
-            }
-
-            n = new ClusterNode("127.0.0.1", localPort, "127.0.0.1", remotePort, null, null);
-            n.AcceptInvalidCertificates = true;
-            n.MutuallyAuthenticate = true;
-            n.Debug = false;
-            n.ReadDataStream = false;
-            n.PresharedKey = "0000000000000000";
-            n.MessageReceived = MessageReceived;
-            n.StreamReceived = StreamReceived;
-            n.ClusterHealthy = ClusterHealthy;
-            n.ClusterUnhealthy = ClusterUnhealthy;
-
-            n.Start();
+            InitializeNode();
 
             bool runForever = true;
+            bool success = false;
+
             while (runForever)
             {
                 Console.Write("Command [? for help]: ");
@@ -50,15 +31,7 @@ namespace TestNode
                 switch (userInput)
                 {
                     case "?":
-                        Console.WriteLine("---");
-                        Console.WriteLine(" q                   quit");
-                        Console.WriteLine(" ?                   this menu");
-                        Console.WriteLine(" cls                 clear screen");
-                        Console.WriteLine(" send bytes          send message to peer");
-                        Console.WriteLine(" send bytes async    send message to peer, asynchronously");
-                        Console.WriteLine(" send stream         send message to peer using a stream");
-                        Console.WriteLine(" send stream async   send message to peer using a stream, asynchronously");
-                        Console.WriteLine(" health              display cluster health");
+                        Menu();
                         break;
 
                     case "q":
@@ -69,10 +42,11 @@ namespace TestNode
                         Console.Clear();
                         break;
 
-                    case "send bytes":
+                    case "send":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
-                        if (n.Send(Encoding.UTF8.GetBytes(userInput)))
+                        success = node.Send(Encoding.UTF8.GetBytes(userInput)).Result;
+                        if (success)
                         {
                             Console.WriteLine("Success");
                         }
@@ -82,25 +56,14 @@ namespace TestNode
                         }
                         break;
 
-                    case "send bytes async":
-                        Console.Write("Data: ");
-                        userInput = Console.ReadLine();
-                        if (n.SendAsync(Encoding.UTF8.GetBytes(userInput)).Result)
-                        {
-                            Console.WriteLine("Success");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Failed");
-                        }
-                        break;
-
-                    case "send stream":
+                    case "send str":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
                         data = Encoding.UTF8.GetBytes(userInput);
                         ms = new MemoryStream(data);
-                        if (n.Send(data.Length, ms))
+                        ms.Seek(0, SeekOrigin.Begin);
+                        success = node.Send(data.Length, ms).Result;
+                        if (success)
                         {
                             Console.WriteLine("Success");
                         }
@@ -109,63 +72,78 @@ namespace TestNode
                             Console.WriteLine("Failed");
                         }
                         break;
-
-                    case "send stream async":
-                        Console.Write("Data: ");
-                        userInput = Console.ReadLine();
-                        data = Encoding.UTF8.GetBytes(userInput);
-                        ms = new MemoryStream(data);
-                        if (n.SendAsync(data.Length, ms).Result)
-                        {
-                            Console.WriteLine("Success");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Failed");
-                        }
-                        break; 
 
                     case "health":
-                        Console.WriteLine("Healthy: " + n.IsHealthy);
+                        Console.WriteLine("Healthy: " + node.IsHealthy);
                         break;
                 }
             }
         }
 
-        static bool ClusterHealthy()
+        private static void InitializeNode()
+        {
+            while (localPort < 1 || remotePort < 1)
+            {
+                Console.Write("Local port  : ");
+                localPort = Convert.ToInt32(Console.ReadLine());
+                Console.Write("Remote port : ");
+                remotePort = Convert.ToInt32(Console.ReadLine());
+            }
+
+            node = new ClusterNode("127.0.0.1", localPort, "127.0.0.1", remotePort, null, null);
+            node.AcceptInvalidCertificates = true;
+            node.MutuallyAuthenticate = false;
+            node.Debug = false;
+            node.PresharedKey = "0000000000000000";
+            node.MessageReceived = MessageReceived;
+            node.ClusterHealthy = ClusterHealthy;
+            node.ClusterUnhealthy = ClusterUnhealthy;
+
+            node.Start();
+        }
+
+        private static void Menu()
+        {
+            Console.WriteLine("---");
+            Console.WriteLine(" q           quit");
+            Console.WriteLine(" ?           this menu");
+            Console.WriteLine(" cls         clear screen");
+            Console.WriteLine(" send        send message to peer");
+            Console.WriteLine(" send str    send message to peer using stream");
+            Console.WriteLine(" health      display cluster health");
+            Console.WriteLine("");
+        }
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private static async Task ClusterHealthy()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             Console.WriteLine("NOTICE: cluster is healthy");
-            return true;
         }
 
-        static bool ClusterUnhealthy()
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private static async Task ClusterUnhealthy()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             Console.WriteLine("NOTICE: cluster is unhealthy");
-            return true;
         }
 
-        static bool MessageReceived(byte[] data)
+        private static async Task MessageReceived(long contentLength, Stream stream)
         {
-            if (data == null || data.Length < 1) return true;
-            Console.WriteLine("NOTICE: data received (" + data.Length + " bytes):");
-            Console.WriteLine(Encoding.UTF8.GetString(data));
-            return true;
-        }
-
-        static bool StreamReceived(long contentLength, Stream stream)
-        {
-            if (contentLength < 1) return true;
+            if (contentLength < 1) return;
 
             int bytesRead = 0;
             int bufferLen = 65536;
             byte[] buffer = new byte[bufferLen];
             long bytesRemaining = contentLength;
 
-            Console.WriteLine("NOTICE: stream received " + contentLength + " bytes:");
+            Console.Write("Received " + contentLength + " bytes: ");
 
             while (bytesRemaining > 0)
             {
-                bytesRead = stream.Read(buffer, 0, buffer.Length);
+                bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
 
                 if (bytesRead > 0)
                 {
@@ -177,8 +155,7 @@ namespace TestNode
                 bytesRemaining -= bytesRead;
             }
 
-            Console.WriteLine(""); 
-            return true;
-        } 
+            Console.WriteLine("");
+        }
     }
 }

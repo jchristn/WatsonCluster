@@ -1,33 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Authentication;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
 namespace WatsonCluster
 {
-    /// <summary>
-    /// The Watson cluster client node (initiates connections to server).  Use ClusterNode, which encapsulates this class.
-    /// </summary>
     internal class ClusterClient : IDisposable
     {
-        #region Public-Members
+        #region Internal-Members
 
-        /// <summary>
-        /// Enable or disable full reading of input streams.
-        /// When enabled, use MessageReceived and Send(byte[] data).  
-        /// When disabled, use StreamReceived and Send(long contentLength, Stream stream).
-        /// </summary>
-        internal bool ReadDataStream = true;
-
-        /// <summary>
-        /// Buffer size to use when reading input and output streams.  Default is 65536.
-        /// </summary>
         internal int ReadStreamBufferSize
         {
             get
@@ -41,25 +25,13 @@ namespace WatsonCluster
             }
         }
 
-        /// <summary>
-        /// Enable or disable console debugging.
-        /// </summary>
         internal bool Debug = false;
 
-        /// <summary>
-        /// Accept SSL certificates that are expired or unable to be validated.
-        /// </summary>
         internal bool AcceptInvalidCertificates = true;
 
-        /// <summary>
-        /// Enable or disable mutual authentication with SSL.
-        /// </summary>
         internal bool MutuallyAuthenticate = false;
 
-        /// <summary>
-        /// Preshared key for TCP authentication.
-        /// </summary>
-        public string PresharedKey
+        internal string PresharedKey
         {
             get
             {
@@ -72,29 +44,12 @@ namespace WatsonCluster
             }
         }
 
-        /// <summary>
-        /// Method to call when the cluster is healthy.
-        /// </summary>
-        internal Func<bool> ClusterHealthy = null;
+        internal Func<Task> ClusterHealthy = null;
 
-        /// <summary>
-        /// Method to call when the cluster is unhealthy.
-        /// </summary
-        internal Func<bool> ClusterUnhealthy = null;
+        internal Func<Task> ClusterUnhealthy = null;
 
-        /// <summary>
-        /// Method to call when a message is received.  Only use when ReadDataStream = true.
-        /// </summary>
-        internal Func<byte[], bool> MessageReceived = null;
+        internal Func<long, Stream, Task> MessageReceived = null;
 
-        /// <summary>
-        /// Method to call when a stream is received.  Only use when ReadDataStream = false.
-        /// </summary>
-        internal Func<long, Stream, bool> StreamReceived = null;
-
-        /// <summary>
-        /// Determine if the cluster client is connected to the server.
-        /// </summary>
         internal bool Connected
         {
             get
@@ -104,7 +59,7 @@ namespace WatsonCluster
             }
         }
 
-        #endregion
+        #endregion Internal-Members
 
         #region Private-Members
 
@@ -116,132 +71,57 @@ namespace WatsonCluster
         private string _PresharedKey;
         private WatsonTcpClient _WtcpClient = null;
 
-        #endregion
+        #endregion Private-Members
 
         #region Constructors-and-Factories
 
-        /// <summary>
-        /// Initialize the cluster client.  Call .Start() to start.
-        /// </summary>
-        /// <param name="serverIp">The IP address of the peer server.</param>
-        /// <param name="serverPort">The TCP port of the peer server.</param> 
-        /// <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
-        /// <param name="certPass">The SSL certificate file password, if any.</param>
         internal ClusterClient(string serverIp, int serverPort, string certFile, string certPass)
         {
             if (String.IsNullOrEmpty(serverIp)) throw new ArgumentNullException(nameof(serverIp));
-            if (serverPort < IPEndPoint.MinPort || serverPort > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(serverPort)); 
+            if (serverPort < IPEndPoint.MinPort || serverPort > IPEndPoint.MaxPort) throw new ArgumentOutOfRangeException(nameof(serverPort));
 
             _ServerIp = serverIp;
             _ServerPort = serverPort;
             _CertFile = certFile;
-            _CertPass = certPass; 
+            _CertPass = certPass;
         }
 
-        #endregion
+        #endregion Constructors-and-Factories
 
-        #region Public-Methods
+        #region Internal-Methods
 
-        /// <summary>
-        /// Start the cluster client.
-        /// </summary>
         internal void Start()
         {
             Task.Run(() => MaintainConnection());
         }
 
-        /// <summary>
-        /// Send a message to the connected server.
-        /// </summary>
-        /// <param name="data">Data to send to the server.</param>
-        /// <returns>True if successful.</returns>
-        internal bool Send(byte[] data)
+        internal async Task<bool> Send(byte[] data)
         {
-            if (_WtcpClient == null)
-            {
-                if (Debug) Console.WriteLine("Client is null, cannot send");
-                return false;
-            }
+            MemoryStream stream = null;
+            long contentLength = 0;
 
-            if (_WtcpClient.Connected)
+            if (data != null && data.Length > 0)
             {
-                _WtcpClient.Send(data);
-                return true;
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
             }
             else
             {
-                if (Debug) Console.WriteLine("Client is not connected, cannot send");
-                return false;
+                stream = new MemoryStream(new byte[0]);
             }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return await Send(contentLength, stream);
         }
 
-        /// <summary>
-        /// Send a message to the connected server using a stream.
-        /// </summary>
-        /// <param name="contentLength">The amount of data to read from the stream.</param>
-        /// <param name="stream">The stream containing the data.</param>
-        /// <returns>True if successful.</returns>
-        internal bool Send(long contentLength, Stream stream)
+        internal async Task<bool> Send(long contentLength, Stream stream)
         {
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
 
             if (_WtcpClient == null)
             {
-                if (Debug) Console.WriteLine("Client is null, cannot send");
-                return false;
-            }
-
-            if (_WtcpClient.Connected)
-            {
-                return _WtcpClient.Send(contentLength, stream);
-            }
-            else
-            {
-                if (Debug) Console.WriteLine("Client is not connected, cannot send");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Send a message to the server, asynchronously.
-        /// </summary>
-        /// <param name="data">Data to send to the server.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        internal async Task<bool> SendAsync(byte[] data)
-        {
-            if (_WtcpClient == null)
-            {
-                if (Debug) Console.WriteLine("Client is null, cannot send");
-                return false;
-            }
-
-            if (_WtcpClient.Connected)
-            {
-                await _WtcpClient.SendAsync(data);
-                return true;
-            }
-            else
-            {
-                if (Debug) Console.WriteLine("Client is not connected, cannot send");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Send a message to the server, asynchronously, using a stream.
-        /// </summary>
-        /// <param name="contentLength">The amount of data to read from the stream.</param>
-        /// <param name="stream">The stream containing the data.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        internal async Task<bool> SendAsync(long contentLength, Stream stream)
-        {
-            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
-            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
-
-            if (_WtcpClient == null)
-            {
-                if (Debug) Console.WriteLine("Client is null, cannot send");
+                if (Debug) Log("Client is null, cannot send");
                 return false;
             }
 
@@ -251,21 +131,18 @@ namespace WatsonCluster
             }
             else
             {
-                if (Debug) Console.WriteLine("Client is not connected, cannot send");
+                if (Debug) Log("Client is not connected, cannot send");
                 return false;
             }
         }
 
-        /// <summary>
-        /// Destroy the client and release resources.
-        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        #endregion
+        #endregion Internal-Methods
 
         #region Private-Methods
 
@@ -285,7 +162,7 @@ namespace WatsonCluster
                 {
                     if (_WtcpClient == null)
                     {
-                        if (Debug) Console.WriteLine("Attempting connection to " + _ServerIp + ":" + _ServerPort);
+                        if (Debug) Log("Attempting connection to " + _ServerIp + ":" + _ServerPort);
 
                         if (String.IsNullOrEmpty(_CertFile))
                         {
@@ -297,7 +174,7 @@ namespace WatsonCluster
                         }
 
                         _WtcpClient.Debug = Debug;
-                        _WtcpClient.ReadDataStream = ReadDataStream;
+                        _WtcpClient.ReadDataStream = false;
                         _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
@@ -308,8 +185,7 @@ namespace WatsonCluster
 
                         _WtcpClient.ServerConnected = ServerConnected;
                         _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.MessageReceived = MsgReceived;
-                        _WtcpClient.StreamReceived = StrmReceived;
+                        _WtcpClient.StreamReceived = StreamReceived;
 
                         _WtcpClient.Start();
                     }
@@ -324,8 +200,8 @@ namespace WatsonCluster
                             _WtcpClient = new WatsonTcpClient(_ServerIp, _ServerPort, _CertFile, _CertPass);
                         }
 
-                        _WtcpClient.Debug = Debug; 
-                        _WtcpClient.ReadDataStream = ReadDataStream;
+                        _WtcpClient.Debug = Debug;
+                        _WtcpClient.ReadDataStream = false;
                         _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
@@ -336,95 +212,93 @@ namespace WatsonCluster
 
                         _WtcpClient.ServerConnected = ServerConnected;
                         _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.MessageReceived = MsgReceived;
-                        _WtcpClient.StreamReceived = StrmReceived; 
+                        _WtcpClient.StreamReceived = StreamReceived;
 
-                        if (Debug) Console.WriteLine("Attempting reconnect to " + _ServerIp + ":" + _ServerPort);
+                        if (Debug) Log("Attempting reconnect to " + _ServerIp + ":" + _ServerPort);
 
                         _WtcpClient.Start();
                     }
 
                     Task.Delay(1000).Wait();
                 }
+                catch (SocketException)
+                {
+                    Log("Unable to connect to peer");
+                }
                 catch (Exception e)
                 {
                     if (Debug)
                     {
-                        LogException(e);
+                        LogException("MaintainConnection", e);
                     }
                 }
             }
         }
 
-        private void LogException(Exception e)
+        private void Log(string msg)
         {
-            Console.WriteLine("================================================================================");
-            Console.WriteLine(" = Exception Type: " + e.GetType().ToString());
-            Console.WriteLine(" = Exception Data: " + e.Data);
-            Console.WriteLine(" = Inner Exception: " + e.InnerException);
-            Console.WriteLine(" = Exception Message: " + e.Message);
-            Console.WriteLine(" = Exception Source: " + e.Source);
-            Console.WriteLine(" = Exception StackTrace: " + e.StackTrace);
-            Console.WriteLine("================================================================================");
+            if (Debug) Console.WriteLine(msg);
+        }
+
+        private void LogException(string method, Exception e)
+        {
+            Log("");
+            Log("An exception was encountered.");
+            Log("   Method        : " + method);
+            Log("   Type          : " + e.GetType().ToString());
+            Log("   Data          : " + e.Data);
+            Log("   Inner         : " + e.InnerException);
+            Log("   Message       : " + e.Message);
+            Log("   Source        : " + e.Source);
+            Log("   StackTrace    : " + e.StackTrace);
+            Log("");
         }
 
         private string AuthenticationRequested()
         {
-            Console.WriteLine("Authentication requested");
+            Log("Authentication requested");
             if (!String.IsNullOrEmpty(PresharedKey)) return PresharedKey;
             throw new AuthenticationException("Preshared key not specified or not valid.");
         }
 
-        private bool AuthenticationSucceeded()
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private async Task AuthenticationSucceeded()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
-            Console.WriteLine("Authentication succeeded");
-            return true;
+            Log("Authentication succeeded");
         }
 
-        private bool AuthenticationFailed()
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private async Task AuthenticationFailed()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             throw new AuthenticationException("Preshared key not specified or not valid.");
         }
 
-        private bool ServerConnected()
+        private async Task ServerConnected()
         {
-            if (Debug) Console.WriteLine("Server " + _ServerIp + ":" + _ServerPort + " connected");
-            if (ClusterHealthy != null) ClusterHealthy();
-            return true;
+            if (Debug) Log("Server " + _ServerIp + ":" + _ServerPort + " connected");
+            if (ClusterHealthy != null) await ClusterHealthy();
         }
 
-        private bool ServerDisconnected()
+        private async Task ServerDisconnected()
         {
-            if (Debug) Console.WriteLine("Server " + _ServerIp + ":" + _ServerPort + " disconnected");
-            if (ClusterUnhealthy != null) ClusterUnhealthy();
-            return true;
+            if (Debug) Log("Server " + _ServerIp + ":" + _ServerPort + " disconnected");
+            if (ClusterUnhealthy != null) await ClusterUnhealthy();
         }
 
-        private bool MsgReceived(byte[] data)
+        private async Task StreamReceived(long contentLength, Stream stream)
         {
             if (Debug)
             {
-                if (data != null && data.Length > 0)
-                {
-                    Console.WriteLine("Message received: " + data.Length + " bytes");
-                }
+                Log("Stream received: " + contentLength + " bytes");
             }
 
-            if (MessageReceived != null) return MessageReceived(data);
-            else return false;
+            if (MessageReceived != null) await MessageReceived(contentLength, stream);
         }
 
-        private bool StrmReceived(long contentLength, Stream stream)
-        {
-            if (Debug)
-            {
-                Console.WriteLine("Stream received: " + contentLength + " bytes");
-            }
-
-            if (StreamReceived != null) return StreamReceived(contentLength, stream);
-            else return false;
-        }
-
-        #endregion
+        #endregion Private-Methods
     }
 }

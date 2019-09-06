@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace WatsonCluster
@@ -15,12 +14,7 @@ namespace WatsonCluster
         #region Public-Members
 
         /// <summary>
-        /// Enable or disable full reading of input streams.  When enabled, use MessageReceived.  When disabled, use StreamReceived.
-        /// </summary>
-        public bool ReadDataStream = true;
-
-        /// <summary>
-        /// Buffer size to use when reading input and output streams.  Default is 65536.
+        /// Buffer size to use when reading streams.  Default is 65536.
         /// </summary>
         public int ReadStreamBufferSize
         {
@@ -69,22 +63,17 @@ namespace WatsonCluster
         /// <summary>
         /// Method to call when the cluster is healthy.
         /// </summary>
-        public Func<bool> ClusterHealthy = null;
+        public Func<Task> ClusterHealthy = null;
 
         /// <summary>
         /// Method to call when the cluster is unhealthy.
         /// </summary>
-        public Func<bool> ClusterUnhealthy = null;
+        public Func<Task> ClusterUnhealthy = null;
 
         /// <summary>
-        /// Method to call when a message is received.  Only use when ReadDataStream = true.
+        /// Method to call when a message is received.
         /// </summary>
-        public Func<byte[], bool> MessageReceived = null;
-
-        /// <summary>
-        /// Method to call when a stream is received.  Only use when ReadDataStream = false.
-        /// </summary>
-        public Func<long, Stream, bool> StreamReceived = null;
+        public Func<long, Stream, Task> MessageReceived = null;
 
         /// <summary>
         /// Determine if the cluster is healthy (i.e. both nodes are bidirectionally connected).
@@ -96,40 +85,41 @@ namespace WatsonCluster
             {
                 if (_ClusterServer == null)
                 {
-                    if (Debug) Console.WriteLine("Server object is null");
+                    if (Debug) Log("Server object is null");
                     return false;
                 }
 
                 if (_ClusterClient == null)
                 {
-                    if (Debug) Console.WriteLine("Client object is null");
+                    if (Debug) Log("Client object is null");
                     return false;
                 }
 
                 if (String.IsNullOrEmpty(_CurrPeerIpPort))
                 {
-                    if (Debug) Console.WriteLine("Peer information is null");
+                    if (Debug) Log("Peer information is null");
                     return false;
                 }
 
                 if (!_ClusterServer.IsConnected(_CurrPeerIpPort))
                 {
-                    if (Debug) Console.WriteLine("Server peer is not connected");
+                    if (Debug) Log("Server peer is not connected");
                     return false;
                 }
 
                 if (_ClusterClient.Connected)
                 {
-                    if (Debug) Console.WriteLine("Client is not connected");
                     return true;
                 }
-
-                return false;
-
+                else
+                {
+                    if (Debug) Log("Client is not connected");
+                    return false;
+                }
             }
         }
 
-        #endregion
+        #endregion Public-Members
 
         #region Private-Members
 
@@ -146,8 +136,9 @@ namespace WatsonCluster
         private ClusterClient _ClusterClient;
 
         private string _CurrPeerIpPort;
+        private DateTime _UnhealthyCalled = DateTime.Now;
 
-        #endregion
+        #endregion Private-Members
 
         #region Constructors-and-Factories
 
@@ -155,11 +146,11 @@ namespace WatsonCluster
         /// Initialize the cluster node.  Call .Start() to start.
         /// </summary>
         /// <param name="listenerIp">The IP address on which to listen.  If null, Watson will attempt to listen on any IP address.</param>
-        /// <param name="listenerPort">The TCP port on which the cluster server should listen.</param> 
+        /// <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
         /// <param name="peerIp">The IP address of the peer cluster node.</param>
         /// <param name="peerPort">The TCP port of the peer cluster node.</param>
         /// <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
-        /// <param name="certPass">The SSL certificate file password, if any.</param> 
+        /// <param name="certPass">The SSL certificate file password, if any.</param>
         public ClusterNode(
             string listenerIp,
             int listenerPort,
@@ -177,7 +168,7 @@ namespace WatsonCluster
             _PeerIp = peerIp;
             _PeerPort = peerPort;
             _CertFile = certFile;
-            _CertPass = certPass; 
+            _CertPass = certPass;
         }
 
         /// <summary>
@@ -187,9 +178,9 @@ namespace WatsonCluster
         /// <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
         /// <param name="peerIp">The IP address of the peer cluster node.</param>
         /// <param name="peerPort">The TCP port of the peer cluster node.</param>
-        /// <param name="permittedIps">The list of IP addresses allowed to connect.</param> 
+        /// <param name="permittedIps">The list of IP addresses allowed to connect.</param>
         /// <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
-        /// <param name="certPass">The SSL certificate file password, if any.</param> 
+        /// <param name="certPass">The SSL certificate file password, if any.</param>
         public ClusterNode(
             string listenerIp,
             int listenerPort,
@@ -209,13 +200,13 @@ namespace WatsonCluster
             _PeerIp = peerIp;
             _PeerPort = peerPort;
             _CertFile = certFile;
-            _CertPass = certPass; 
+            _CertPass = certPass;
 
             _PermittedIps = null;
             if (permittedIps != null && permittedIps.Count() > 0) permittedIps = new List<string>(permittedIps);
         }
 
-        #endregion
+        #endregion Constructors-and-Factories
 
         #region Public-Methods
 
@@ -236,26 +227,22 @@ namespace WatsonCluster
             _ClusterServer.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _ClusterServer.MutuallyAuthenticate = MutuallyAuthenticate;
             _ClusterServer.Debug = Debug;
-            _ClusterServer.ReadDataStream = ReadDataStream;
             _ClusterServer.ReadStreamBufferSize = ReadStreamBufferSize;
             _ClusterServer.PresharedKey = PresharedKey;
             _ClusterServer.ClientConnected = SrvClientConnect;
             _ClusterServer.ClientDisconnected = SrvClientDisconnect;
-            _ClusterServer.MessageReceived = SrvMsgReceived;
-            _ClusterServer.StreamReceived = SrvStrmReceived;
+            _ClusterServer.MessageReceived = SrvStreamReceived;
             _ClusterServer.Start();
 
             _ClusterClient = new ClusterClient(_PeerIp, _PeerPort, _CertFile, _CertPass);
             _ClusterClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _ClusterClient.MutuallyAuthenticate = MutuallyAuthenticate;
             _ClusterClient.Debug = Debug;
-            _ClusterClient.ReadDataStream = ReadDataStream;
             _ClusterClient.ReadStreamBufferSize = ReadStreamBufferSize;
             _ClusterClient.PresharedKey = PresharedKey;
             _ClusterClient.ClusterHealthy = CliServerConnect;
             _ClusterClient.ClusterUnhealthy = CliServerDisconnect;
-            _ClusterClient.MessageReceived = CliMsgReceived;
-            _ClusterClient.StreamReceived = CliStrmReceived;
+            _ClusterClient.MessageReceived = ClientStreamReceived;
             _ClusterClient.Start();
         }
 
@@ -264,30 +251,23 @@ namespace WatsonCluster
         /// </summary>
         /// <param name="data">Data to send to the peer node.</param>
         /// <returns>True if successful.</returns>
-        public bool Send(byte[] data)
+        public async Task<bool> Send(byte[] data)
         {
-            if (_ClusterClient != null)
+            MemoryStream stream = null;
+            long contentLength = 0;
+
+            if (data != null && data.Length > 0)
             {
-                if (_ClusterClient.Connected)
-                {
-                    return _ClusterClient.Send(data);
-                }
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
             }
-            else if (String.IsNullOrEmpty(_CurrPeerIpPort))
+            else
             {
-                if (Debug) Console.WriteLine("No peer connected");
-                return false;
-            }
-            else if (_ClusterServer != null)
-            {
-                if (_ClusterServer.IsConnected(_CurrPeerIpPort))
-                {
-                    return _ClusterServer.Send(_CurrPeerIpPort, data);
-                }
+                stream = new MemoryStream(new byte[0]);
             }
 
-            if (Debug) Console.WriteLine("Neither server or client are healthy");
-            return false;
+            stream.Seek(0, SeekOrigin.Begin);
+            return await Send(contentLength, stream);
         }
 
         /// <summary>
@@ -296,7 +276,7 @@ namespace WatsonCluster
         /// <param name="contentLength">The amount of data to read from the stream.</param>
         /// <param name="stream">The stream containing the data.</param>
         /// <returns>True if successful.</returns>
-        public bool Send(long contentLength, Stream stream)
+        public async Task<bool> Send(long contentLength, Stream stream)
         {
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
@@ -305,89 +285,23 @@ namespace WatsonCluster
             {
                 if (_ClusterClient.Connected)
                 {
-                    return _ClusterClient.Send(contentLength, stream);
+                    return await _ClusterClient.Send(contentLength, stream);
                 }
             }
             else if (String.IsNullOrEmpty(_CurrPeerIpPort))
             {
-                if (Debug) Console.WriteLine("No peer connected");
+                if (Debug) Log("No peer connected");
                 return false;
             }
             else if (_ClusterServer != null)
             {
                 if (_ClusterServer.IsConnected(_CurrPeerIpPort))
                 {
-                    return _ClusterServer.Send(_CurrPeerIpPort, contentLength, stream);
+                    return await _ClusterServer.Send(_CurrPeerIpPort, contentLength, stream);
                 }
             }
 
-            if (Debug) Console.WriteLine("Neither server or client are healthy");
-            return false;
-        }
-
-        /// <summary>
-        /// Send a message to the peer node, asynchronously.
-        /// </summary>
-        /// <param name="data">Data to send to the peer node.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        public async Task<bool> SendAsync(byte[] data)
-        {
-            if (_ClusterClient != null)
-            {
-                if (_ClusterClient.Connected)
-                {
-                    return await _ClusterClient.SendAsync(data);
-                }
-            }
-            else if (String.IsNullOrEmpty(_CurrPeerIpPort))
-            {
-                if (Debug) Console.WriteLine("No peer connected");
-                return false;
-            }
-            else if (_ClusterServer != null)
-            {
-                if (_ClusterServer.IsConnected(_CurrPeerIpPort))
-                {
-                    return await _ClusterServer.SendAsync(_CurrPeerIpPort, data);
-                }
-            }
-
-            if (Debug) Console.WriteLine("Neither server or client are healthy");
-            return false;
-        }
-
-        /// <summary>
-        /// Send a message to the peer node, asynchronously, using a stream.
-        /// </summary>
-        /// <param name="contentLength">The amount of data to read from the stream.</param>
-        /// <param name="stream">The stream containing the data.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        public async Task<bool> SendAsync(long contentLength, Stream stream)
-        {
-            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
-            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
-
-            if (_ClusterClient != null)
-            {
-                if (_ClusterClient.Connected)
-                {
-                    return await _ClusterClient.SendAsync(contentLength, stream);
-                }
-            }
-            else if (String.IsNullOrEmpty(_CurrPeerIpPort))
-            {
-                if (Debug) Console.WriteLine("No peer connected");
-                return false;
-            }
-            else if (_ClusterServer != null)
-            {
-                if (_ClusterServer.IsConnected(_CurrPeerIpPort))
-                {
-                    return await _ClusterServer.SendAsync(_CurrPeerIpPort, contentLength, stream);
-                }
-            }
-
-            if (Debug) Console.WriteLine("Neither server or client are healthy");
+            if (Debug) Log("Neither server or client are healthy");
             return false;
         }
 
@@ -400,7 +314,7 @@ namespace WatsonCluster
             GC.SuppressFinalize(this);
         }
 
-        #endregion
+        #endregion Public-Methods
 
         #region Private-Methods
 
@@ -413,76 +327,81 @@ namespace WatsonCluster
             }
         }
 
-        private void LogException(Exception e)
+        private void Log(string msg)
         {
-            Console.WriteLine("================================================================================");
-            Console.WriteLine(" = Exception Type: " + e.GetType().ToString());
-            Console.WriteLine(" = Exception Data: " + e.Data);
-            Console.WriteLine(" = Inner Exception: " + e.InnerException);
-            Console.WriteLine(" = Exception Message: " + e.Message);
-            Console.WriteLine(" = Exception Source: " + e.Source);
-            Console.WriteLine(" = Exception StackTrace: " + e.StackTrace);
-            Console.WriteLine("================================================================================");
+            if (Debug) Console.WriteLine(msg);
         }
 
-        private bool SrvClientConnect(string ipPort)
+        private void LogException(string method, Exception e)
+        {
+            Log("");
+            Log("An exception was encountered.");
+            Log("   Method        : " + method);
+            Log("   Type          : " + e.GetType().ToString());
+            Log("   Data          : " + e.Data);
+            Log("   Inner         : " + e.InnerException);
+            Log("   Message       : " + e.Message);
+            Log("   Source        : " + e.Source);
+            Log("   StackTrace    : " + e.StackTrace);
+            Log("");
+        }
+
+        private async Task SrvClientConnect(string ipPort)
         {
             _CurrPeerIpPort = ipPort;
             if (_ClusterClient != null && _ClusterClient.Connected)
             {
-                if (ClusterHealthy != null) ClusterHealthy();
+                if (ClusterHealthy != null) await ClusterHealthy();
             }
-            return true;
         }
 
-        private bool SrvClientDisconnect(string ipPort)
+        private async Task SrvClientDisconnect(string ipPort)
         {
             _CurrPeerIpPort = null;
-            if (ClusterUnhealthy != null) ClusterUnhealthy();
-            return true;
+            if (ClusterUnhealthy != null)
+            {
+                TimeSpan ts = DateTime.Now - _UnhealthyCalled;
+                if (ts.TotalSeconds > 1)
+                {
+                    _UnhealthyCalled = DateTime.Now;
+                    await ClusterUnhealthy();
+                }
+            }
         }
 
-        private bool SrvMsgReceived(string ipPort, byte[] data)
+        private async Task SrvStreamReceived(string ipPort, long contentLength, Stream stream)
         {
-            if (MessageReceived != null) MessageReceived(data);
-            return true;
+            if (MessageReceived != null) await MessageReceived(contentLength, stream);
         }
 
-        private bool SrvStrmReceived(string ipPort, long contentLength, Stream stream)
-        {
-            if (StreamReceived != null) StreamReceived(contentLength, stream);
-            return true;
-        }
-
-        private bool CliServerConnect()
+        private async Task CliServerConnect()
         {
             if (_ClusterServer != null
                 && !String.IsNullOrEmpty(_CurrPeerIpPort)
                 && _ClusterServer.IsConnected(_CurrPeerIpPort))
             {
-                ClusterHealthy();
+                await ClusterHealthy();
             }
-            return true;
         }
 
-        private bool CliServerDisconnect()
+        private async Task CliServerDisconnect()
         {
-            ClusterUnhealthy();
-            return true;
+            if (ClusterUnhealthy != null)
+            {
+                TimeSpan ts = DateTime.Now - _UnhealthyCalled;
+                if (ts.TotalSeconds > 1)
+                {
+                    _UnhealthyCalled = DateTime.Now;
+                    await ClusterUnhealthy();
+                }
+            }
         }
 
-        private bool CliMsgReceived(byte[] data)
+        private async Task ClientStreamReceived(long contentLength, Stream stream)
         {
-            if (MessageReceived != null) MessageReceived(data);
-            return true;
+            if (MessageReceived != null) await MessageReceived(contentLength, stream);
         }
 
-        private bool CliStrmReceived(long contentLength, Stream stream)
-        {
-            if (StreamReceived != null) StreamReceived(contentLength, stream);
-            return true;
-        }
-
-        #endregion
+        #endregion Private-Methods
     }
 }

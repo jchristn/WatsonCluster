@@ -1,32 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
 namespace WatsonCluster
 {
-    /// <summary>
-    /// The Watson cluster server node (receives connections from clients).  Use ClusterNode, which encapsulates this class.
-    /// </summary>
     internal class ClusterServer : IDisposable
     {
-        #region Public-Members
+        #region Internal-Members
 
-        /// <summary>
-        /// Enable or disable full reading of input streams.  
-        /// When enabled, use MessageReceived and Send(string ipPort, byte[] data).  
-        /// When disabled, use StreamReceived and Send(string ipPort, long contentLength, Stream stream).
-        /// </summary>
-        internal bool ReadDataStream = true;
-
-        /// <summary>
-        /// Buffer size to use when reading input and output streams.  Default is 65536.
-        /// </summary>
         internal int ReadStreamBufferSize
         {
             get
@@ -40,25 +24,13 @@ namespace WatsonCluster
             }
         }
 
-        /// <summary>
-        /// Enable or disable console debugging.
-        /// </summary>
         internal bool Debug = false;
 
-        /// <summary>
-        /// Accept SSL certificates that are expired or unable to be validated.
-        /// </summary>
         internal bool AcceptInvalidCertificates = true;
 
-        /// <summary>
-        /// Enable or disable mutual authentication with SSL.
-        /// </summary>
         internal bool MutuallyAuthenticate = false;
 
-        /// <summary>
-        /// Preshared key for TCP authentication.
-        /// </summary>
-        public string PresharedKey
+        internal string PresharedKey
         {
             get
             {
@@ -71,29 +43,13 @@ namespace WatsonCluster
             }
         }
 
-        /// <summary>
-        /// Method to call when a client connects.  The client IP:port is passed to the method, and a response of true is expected.
-        /// </summary>
-        internal Func<string, bool> ClientConnected = null;
+        internal Func<string, Task> ClientConnected = null;
 
-        /// <summary>
-        /// Method to call when a client disconnects.  The client IP:port is passed to the method, and a response of true is expected.
-        /// </summary>
-        internal Func<string, bool> ClientDisconnected = null;
+        internal Func<string, Task> ClientDisconnected = null;
 
-        /// <summary>
-        /// Method to call when a message is received.  The client IP:port is passed to the method, along with a byte array containing the data, and a response of true is expected.
-        /// Only use when ReadDataStream = true.
-        /// </summary>
-        internal Func<string, byte[], bool> MessageReceived = null;
+        internal Func<string, long, Stream, Task> MessageReceived = null;
 
-        /// <summary>
-        /// Method to call when a message is received.  The client IP:port is passed to the method, the number of bytes to read, the stream from which data should be read, and a response of true is expected.
-        /// Only use when ReadDataStream = false.
-        /// </summary>
-        internal Func<string, long, Stream, bool> StreamReceived = null;
-
-        #endregion
+        #endregion Internal-Members
 
         #region Private-Members
 
@@ -106,18 +62,10 @@ namespace WatsonCluster
         private string _PresharedKey;
         private WatsonTcpServer _WtcpServer;
 
-        #endregion
+        #endregion Private-Members
 
         #region Constructors-and-Factories
 
-        /// <summary>
-        /// Initialize the cluster server.  Call .Start() to start.
-        /// </summary>
-        /// <param name="listenerIp">The IP address on which to listen.  If null, Watson will attempt to listen on any IP address.</param>
-        /// <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
-        /// <param name="peerIp">The IP address of the peer client.</param>
-        /// <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
-        /// <param name="certPass">The SSL certificate file password, if any.</param> 
         internal ClusterServer(string listenerIp, int listenerPort, string peerIp, string certFile, string certPass)
         {
             if (String.IsNullOrEmpty(listenerIp)) listenerIp = "+";
@@ -127,20 +75,12 @@ namespace WatsonCluster
             _ListenerIp = listenerIp;
             _ListenerPort = listenerPort;
             _CertFile = certFile;
-            _CertPass = certPass; 
+            _CertPass = certPass;
 
             List<string> permittedIps = new List<string>();
-            permittedIps.Add(peerIp); 
+            permittedIps.Add(peerIp);
         }
 
-        /// <summary>
-        /// Initialize the cluster server.  Call .Start() to start.
-        /// </summary>
-        /// <param name="listenerIp">The IP address on which to listen.  If null, Watson will attempt to listen on any IP address.</param>
-        /// <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
-        /// <param name="permittedIps">The list of IP addresses allowed to connect.</param>
-        /// <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
-        /// <param name="certPass">The SSL certificate file password, if any.</param> 
         internal ClusterServer(string listenerIp, int listenerPort, IEnumerable<string> permittedIps, string certFile, string certPass)
         {
             if (String.IsNullOrEmpty(listenerIp)) listenerIp = "+";
@@ -151,31 +91,24 @@ namespace WatsonCluster
             _ListenerPort = listenerPort;
             _PermittedIps = new List<string>(permittedIps);
             _CertFile = certFile;
-            _CertPass = certPass; 
+            _CertPass = certPass;
         }
 
-        #endregion
+        #endregion Constructors-and-Factories
 
         #region Public-Methods
 
-        /// <summary>
-        /// Determines if a specified client is connected to the local server.
-        /// </summary>
-        /// <returns>True if connected.</returns>
         internal bool IsConnected(string ipPort)
         {
             if (_WtcpServer == null)
             {
-                if (Debug) Console.WriteLine("Server is null");
+                if (Debug) Log("Server is null");
                 return false;
             }
             if (String.IsNullOrEmpty(ipPort)) return false;
             return _WtcpServer.IsClientConnected(ipPort);
         }
 
-        /// <summary>
-        /// Start the cluster server.
-        /// </summary>
         internal void Start()
         {
             if (String.IsNullOrEmpty(_CertFile))
@@ -188,7 +121,7 @@ namespace WatsonCluster
             }
 
             _WtcpServer.Debug = Debug;
-            _WtcpServer.ReadDataStream = ReadDataStream;
+            _WtcpServer.ReadDataStream = false;
             _WtcpServer.ReadStreamBufferSize = ReadStreamBufferSize;
             _WtcpServer.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _WtcpServer.MutuallyAuthenticate = MutuallyAuthenticate;
@@ -196,105 +129,40 @@ namespace WatsonCluster
 
             _WtcpServer.ClientConnected = ClientConnect;
             _WtcpServer.ClientDisconnected = ClientDisconnect;
-            _WtcpServer.MessageReceived = MsgReceived;
             _WtcpServer.StreamReceived = StrmReceived;
 
             _WtcpServer.Start();
         }
 
-        /// <summary>
-        /// Send a message to the specified client.
-        /// </summary>
-        /// <param name="ipPort">The IP:port of the client.</param>
-        /// <param name="data">Data to send to the client.</param>
-        /// <returns>True if successful.</returns>
-        internal bool Send(string ipPort, byte[] data)
+        internal async Task<bool> Send(string ipPort, byte[] data)
         {
-            if (_WtcpServer == null)
+            if (String.IsNullOrEmpty(ipPort)) throw new ArgumentNullException(nameof(ipPort));
+
+            MemoryStream stream = null;
+            long contentLength = 0;
+
+            if (data != null && data.Length > 0)
             {
-                if (Debug) Console.WriteLine("Server is null, cannot send");
-                return false;
-            }
-            if (_WtcpServer.IsClientConnected(ipPort))
-            {
-                _WtcpServer.Send(ipPort, data);
-                return true;
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
             }
             else
             {
-                if (Debug) Console.WriteLine("Server is not connected, cannot send");
-                return false;
+                stream = new MemoryStream(new byte[0]);
             }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return await Send(ipPort, contentLength, stream);
         }
 
-        /// <summary>
-        /// Send a message to the specified client using a stream.
-        /// </summary>
-        /// <param name="ipPort">The IP:port of the client.</param>
-        /// <param name="contentLength">The amount of data to read from the stream.</param>
-        /// <param name="stream">The stream containing the data.</param>
-        /// <returns>True if successful.</returns>
-        internal bool Send(string ipPort, long contentLength, Stream stream)
+        internal async Task<bool> Send(string ipPort, long contentLength, Stream stream)
         {
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
 
             if (_WtcpServer == null)
             {
-                if (Debug) Console.WriteLine("Server is null, cannot send");
-                return false;
-            }
-            if (_WtcpServer.IsClientConnected(ipPort))
-            {
-                return _WtcpServer.Send(ipPort, contentLength, stream);
-            }
-            else
-            {
-                if (Debug) Console.WriteLine("Server is not connected, cannot send");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Send a message to the specified client, asynchronously.
-        /// </summary>
-        /// <param name="ipPort">The IP:port of the client.</param>
-        /// <param name="data">Data to send to the client.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        internal async Task<bool> SendAsync(string ipPort, byte[] data)
-        {
-            if (_WtcpServer == null)
-            {
-                if (Debug) Console.WriteLine("Server is null, cannot send");
-                return false;
-            }
-            if (_WtcpServer.IsClientConnected(ipPort))
-            {
-                await _WtcpServer.SendAsync(ipPort, data);
-                return true;
-            }
-            else
-            {
-                if (Debug) Console.WriteLine("Server is not connected, cannot send");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Send a message to the specified client, asynchronously, using a stream.
-        /// </summary>
-        /// <param name="ipPort">The IP:port of the client.</param>
-        /// <param name="contentLength">The amount of data to read from the stream.</param>
-        /// <param name="stream">The stream containing the data.</param>
-        /// <returns>Task with Boolean indicating if the message was sent successfully.</returns>
-        internal async Task<bool> SendAsync(string ipPort, long contentLength, Stream stream)
-        {
-            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
-            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
-
-            if (_WtcpServer == null)
-            {
-                if (Debug) Console.WriteLine("Server is null, cannot send");
+                if (Debug) Log("Server is null, cannot send");
                 return false;
             }
             if (_WtcpServer.IsClientConnected(ipPort))
@@ -303,21 +171,18 @@ namespace WatsonCluster
             }
             else
             {
-                if (Debug) Console.WriteLine("Server is not connected, cannot send");
+                if (Debug) Log("Server is not connected, cannot send");
                 return false;
             }
         }
 
-        /// <summary>
-        /// Destroy the server and release resources.
-        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        #endregion
+        #endregion Public-Methods
 
         #region Private-Methods
 
@@ -329,53 +194,47 @@ namespace WatsonCluster
             }
         }
 
-        private void LogException(Exception e)
+        private void Log(string msg)
         {
-            Console.WriteLine("================================================================================");
-            Console.WriteLine(" = Exception Type: " + e.GetType().ToString());
-            Console.WriteLine(" = Exception Data: " + e.Data);
-            Console.WriteLine(" = Inner Exception: " + e.InnerException);
-            Console.WriteLine(" = Exception Message: " + e.Message);
-            Console.WriteLine(" = Exception Source: " + e.Source);
-            Console.WriteLine(" = Exception StackTrace: " + e.StackTrace);
-            Console.WriteLine("================================================================================");
+            if (Debug) Console.WriteLine(msg);
         }
 
-        private bool ClientConnect(string ipPort)
+        private void LogException(string method, Exception e)
         {
-            if (Debug) Console.WriteLine("Client " + ipPort + " connected");
-            return ClientConnected(ipPort);
+            Log("");
+            Log("An exception was encountered.");
+            Log("   Method        : " + method);
+            Log("   Type          : " + e.GetType().ToString());
+            Log("   Data          : " + e.Data);
+            Log("   Inner         : " + e.InnerException);
+            Log("   Message       : " + e.Message);
+            Log("   Source        : " + e.Source);
+            Log("   StackTrace    : " + e.StackTrace);
+            Log("");
         }
 
-        private bool ClientDisconnect(string ipPort)
+        private async Task ClientConnect(string ipPort)
         {
-            if (Debug) Console.WriteLine("Client " + ipPort + " disconnected");
-            return ClientDisconnected(ipPort);
+            if (Debug) Log("Client " + ipPort + " connected");
+            if (ClientConnected != null) await ClientConnected(ipPort);
         }
 
-        private bool MsgReceived(string ipPort, byte[] data)
+        private async Task ClientDisconnect(string ipPort)
         {
-            if (Debug)
-            {
-                if (data != null && data.Length > 0)
-                {
-                    Console.WriteLine("Message received from " + ipPort + ": " + data.Length + " bytes");
-                }
-            }
-
-            return MessageReceived(ipPort, data);
+            if (Debug) Log("Client " + ipPort + " disconnected");
+            if (ClientDisconnected != null) await ClientDisconnected(ipPort);
         }
 
-        private bool StrmReceived(string ipPort, long contentLength, Stream stream)
+        private async Task StrmReceived(string ipPort, long contentLength, Stream stream)
         {
             if (Debug)
             {
-                Console.WriteLine("Stream received from " + ipPort + ": " + contentLength + " bytes");
+                Log("Stream received from " + ipPort + ": " + contentLength + " bytes");
             }
 
-            return StreamReceived(ipPort, contentLength, stream);
+            if (MessageReceived != null) await MessageReceived(ipPort, contentLength, stream);
         }
 
-        #endregion
+        #endregion Private-Methods
     }
 }
