@@ -95,6 +95,7 @@ namespace TestNode
             node.MutuallyAuthenticate = false;
             node.Debug = false;
             node.PresharedKey = "0000000000000000";
+
             node.MessageReceived = MessageReceived;
             node.ClusterHealthy = ClusterHealthy;
             node.ClusterUnhealthy = ClusterUnhealthy;

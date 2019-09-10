@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).</Description>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>Joel Christner</Authors>
     <Copyright>(c)2019 Joel Christner</Copyright>
     <PackageProjectUrl>https://github.com/jchristn/watsoncluster</PackageProjectUrl>
@@ -12,13 +12,13 @@
     <RepositoryType>Github</RepositoryType>
     <PackageLicenseUrl>https://github.com/jchristn/WatsonCluster/blob/master/LICENSE.TXT</PackageLicenseUrl>
     <PackageTags>tcp rpc api cluster high availability</PackageTags>
-    <PackageReleaseNotes>Breaking changes, task-based callbacks, dependency updates, bugfixes and internal streamlining</PackageReleaseNotes>
+    <PackageReleaseNotes>Dependency update for more reliable disconnect detection and handling</PackageReleaseNotes>
     <PackageIconUrl>https://raw.githubusercontent.com/jchristn/watsoncluster/master/assets/watson.ico</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
-    <PackageReference Include="WatsonTcp" Version="2.0.1" />
+    <PackageReference Include="WatsonTcp" Version="2.0.5" />
   </ItemGroup>
 
 </Project>

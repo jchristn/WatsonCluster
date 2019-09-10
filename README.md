@@ -14,7 +14,7 @@ A simple C# class using WatsonTCP to enable a one-to-one high availability clust
 ## New in v2.0.x
 
 - Breaking changes!  Simplified constructors and methods
-- Dependency updates
+- Dependency updates for better disconnect handling
 - Bugfixes
 - Suppress redundant calls to ClusterUnhealthy (was called twice, once for client disconnect and once for server disconnect)
 
@@ -101,17 +101,4 @@ mono --server myapp.exe
 
 ## Version History
 
-Notes from previous versions will be shown here.
-
-v1.2.x
-
-- Stream support to enable transmission of larger messages or more efficient processing
-- Simplified constructors, eliminated SSL-specific classes (merged together)
-
-v1.1.x
-
-- SSL support
-
-v1.0.x
-
-- Initial release
+Refer to CHANGELOG.md for details from previous versions.
