@@ -11,12 +11,9 @@ A simple C# class using WatsonTCP to enable a one-to-one high availability clust
 
 ![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
 
-## New in v2.0.x
+## New in v2.0.2
 
-- Breaking changes!  Simplified constructors and methods
-- Dependency updates for better disconnect handling
-- Bugfixes
-- Suppress redundant calls to ClusterUnhealthy (was called twice, once for client disconnect and once for server disconnect)
+- XML documentation
 
 ## Contributions
 
