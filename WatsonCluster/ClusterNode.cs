@@ -318,6 +318,10 @@ namespace WatsonCluster
 
         #region Private-Methods
 
+        /// <summary>
+        /// Dispose of resources.
+        /// </summary>
+        /// <param name="disposing">Disposing.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)

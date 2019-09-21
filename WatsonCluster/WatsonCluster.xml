@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>WatsonCluster</name>
+    </assembly>
+    <members>
+        <member name="T:WatsonCluster.ClusterNode">
+            <summary>
+            A Watson cluster node, which includes both a cluster server and client.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.ClusterNode.ReadStreamBufferSize">
+            <summary>
+            Buffer size to use when reading streams.  Default is 65536.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.Debug">
+            <summary>
+            Enable or disable console debugging.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.AcceptInvalidCertificates">
+            <summary>
+            Accept SSL certificates that are expired or unable to be validated.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.MutuallyAuthenticate">
+            <summary>
+            Enable or disable mutual authentication with SSL.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.ClusterNode.PresharedKey">
+            <summary>
+            Preshared key for TCP authentication.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.ClusterHealthy">
+            <summary>
+            Method to call when the cluster is healthy.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.ClusterUnhealthy">
+            <summary>
+            Method to call when the cluster is unhealthy.
+            </summary>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.MessageReceived">
+            <summary>
+            Method to call when a message is received.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.ClusterNode.IsHealthy">
+            <summary>
+            Determine if the cluster is healthy (i.e. both nodes are bidirectionally connected).
+            </summary>
+            <returns>True if healthy.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.#ctor(System.String,System.Int32,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Initialize the cluster node.  Call .Start() to start.
+            </summary>
+            <param name="listenerIp">The IP address on which to listen.  If null, Watson will attempt to listen on any IP address.</param>
+            <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
+            <param name="peerIp">The IP address of the peer cluster node.</param>
+            <param name="peerPort">The TCP port of the peer cluster node.</param>
+            <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
+            <param name="certPass">The SSL certificate file password, if any.</param>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.#ctor(System.String,System.Int32,System.String,System.Int32,System.Collections.Generic.IEnumerable{System.String},System.String,System.String)">
+            <summary>
+            Initialize the cluster node.  Call .Start() to start.
+            </summary>
+            <param name="listenerIp">The IP address on which to listen.  If null, Watson will attempt to listen on any IP address.</param>
+            <param name="listenerPort">The TCP port on which the cluster server should listen.</param>
+            <param name="peerIp">The IP address of the peer cluster node.</param>
+            <param name="peerPort">The TCP port of the peer cluster node.</param>
+            <param name="permittedIps">The list of IP addresses allowed to connect.</param>
+            <param name="certFile">The SSL certificate filename, if any (PFX file format).  Leave null for non-SSL.</param>
+            <param name="certPass">The SSL certificate file password, if any.</param>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Start">
+            <summary>
+            Start the cluster node.
+            </summary>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.Byte[])">
+            <summary>
+            Send a message to the peer node.
+            </summary>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.Int64,System.IO.Stream)">
+            <summary>
+            Send a message to the peer node using a stream.
+            </summary>
+            <param name="contentLength">The amount of data to read from the stream.</param>
+            <param name="stream">The stream containing the data.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Dispose">
+            <summary>
+            Destroy the cluster node and release resources.
+            </summary>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Dispose(System.Boolean)">
+            <summary>
+            Dispose of resources.
+            </summary>
+            <param name="disposing">Disposing.</param>
+        </member>
+    </members>
+</doc>
