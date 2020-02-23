@@ -2,12 +2,18 @@
 
 ## Current Version
 
+v3.0.0
+
+- Breaking changes; migration from Func-based callbacks to Events
+- Added send with metadata functionality
+- Dependency update
+
+## Previous Versions
+
 v2.0.2
 
 - XML documentation
 - Update WatsonTcp (again, XML documentation)
-
-## Previous Versions
 
 v2.0.1
 

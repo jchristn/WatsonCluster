@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace WatsonCluster
@@ -16,24 +17,19 @@ namespace WatsonCluster
         /// <summary>
         /// Buffer size to use when reading streams.  Default is 65536.
         /// </summary>
-        public int ReadStreamBufferSize
+        public int StreamBufferSize
         {
             get
             {
-                return _ReadStreamBufferSize;
+                return _StreamBufferSize;
             }
             set
             {
-                if (value < 1) throw new ArgumentException("Read stream buffer size must be greater than zero.");
-                _ReadStreamBufferSize = value;
+                if (value < 1) throw new ArgumentException("Stream buffer size must be greater than zero.");
+                _StreamBufferSize = value;
             }
         }
-
-        /// <summary>
-        /// Enable or disable console debugging.
-        /// </summary>
-        public bool Debug = false;
-
+         
         /// <summary>
         /// Accept SSL certificates that are expired or unable to be validated.
         /// </summary>
@@ -61,19 +57,19 @@ namespace WatsonCluster
         }
 
         /// <summary>
-        /// Method to call when the cluster is healthy.
+        /// Event to fire when the cluster is healthy.
         /// </summary>
-        public Func<Task> ClusterHealthy = null;
+        public event EventHandler ClusterHealthy;
 
         /// <summary>
-        /// Method to call when the cluster is unhealthy.
+        /// Event to fire when the cluster is unhealthy.
         /// </summary>
-        public Func<Task> ClusterUnhealthy = null;
+        public event EventHandler ClusterUnhealthy;
 
         /// <summary>
-        /// Method to call when a message is received.
+        /// Event to fire when a message is received.
         /// </summary>
-        public Func<long, Stream, Task> MessageReceived = null;
+        public event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
         /// <summary>
         /// Determine if the cluster is healthy (i.e. both nodes are bidirectionally connected).
@@ -85,25 +81,25 @@ namespace WatsonCluster
             {
                 if (_ClusterServer == null)
                 {
-                    if (Debug) Log("Server object is null");
+                    Logger?.Invoke("[ClusterNode] Server object is null");
                     return false;
                 }
 
                 if (_ClusterClient == null)
                 {
-                    if (Debug) Log("Client object is null");
+                    Logger?.Invoke("[ClusterNode] Client object is null");
                     return false;
                 }
 
                 if (String.IsNullOrEmpty(_CurrPeerIpPort))
                 {
-                    if (Debug) Log("Peer information is null");
+                    Logger?.Invoke("[ClusterNode] Peer information is null");
                     return false;
                 }
 
                 if (!_ClusterServer.IsConnected(_CurrPeerIpPort))
                 {
-                    if (Debug) Log("Server peer is not connected");
+                    Logger?.Invoke("[ClusterNode] Server peer is not connected");
                     return false;
                 }
 
@@ -113,17 +109,22 @@ namespace WatsonCluster
                 }
                 else
                 {
-                    if (Debug) Log("Client is not connected");
+                    Logger?.Invoke("[ClusterNode] Client is not connected");
                     return false;
                 }
             }
         }
 
+        /// <summary>
+        /// Method to invoke when sending a log message.
+        /// </summary>
+        public Action<string> Logger = null;
+
         #endregion Public-Members
 
         #region Private-Members
 
-        private int _ReadStreamBufferSize = 65536;
+        private int _StreamBufferSize = 65536;
         private string _ListenerIp;
         private int _ListenerPort;
         private string _PeerIp;
@@ -226,32 +227,171 @@ namespace WatsonCluster
 
             _ClusterServer.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _ClusterServer.MutuallyAuthenticate = MutuallyAuthenticate;
-            _ClusterServer.Debug = Debug;
-            _ClusterServer.ReadStreamBufferSize = ReadStreamBufferSize;
+            _ClusterServer.Logger = Logger;
+            _ClusterServer.StreamBufferSize = StreamBufferSize;
             _ClusterServer.PresharedKey = PresharedKey;
-            _ClusterServer.ClientConnected = SrvClientConnect;
-            _ClusterServer.ClientDisconnected = SrvClientDisconnect;
-            _ClusterServer.MessageReceived = SrvStreamReceived;
+            _ClusterServer.ClientConnected += SrvClientConnect;
+            _ClusterServer.ClientDisconnected += SrvClientDisconnect;
+            _ClusterServer.MessageReceived += SrvStreamReceived;
             _ClusterServer.Start();
 
             _ClusterClient = new ClusterClient(_PeerIp, _PeerPort, _CertFile, _CertPass);
             _ClusterClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _ClusterClient.MutuallyAuthenticate = MutuallyAuthenticate;
-            _ClusterClient.Debug = Debug;
-            _ClusterClient.ReadStreamBufferSize = ReadStreamBufferSize;
+            _ClusterClient.Logger = Logger;
+            _ClusterClient.StreamBufferSize = StreamBufferSize;
             _ClusterClient.PresharedKey = PresharedKey;
-            _ClusterClient.ClusterHealthy = CliServerConnect;
-            _ClusterClient.ClusterUnhealthy = CliServerDisconnect;
-            _ClusterClient.MessageReceived = ClientStreamReceived;
+            _ClusterClient.ClusterHealthy += CliServerConnect;
+            _ClusterClient.ClusterUnhealthy += CliServerDisconnect;
+            _ClusterClient.MessageReceived += ClientStreamReceived;
             _ClusterClient.Start();
         }
 
         /// <summary>
-        /// Send a message to the peer node.
+        /// Send a message to the peer.
         /// </summary>
         /// <param name="data">Data to send to the peer node.</param>
         /// <returns>True if successful.</returns>
-        public async Task<bool> Send(byte[] data)
+        public bool Send(string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(null, Encoding.UTF8.GetBytes(data));
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public bool Send(Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public bool Send(byte[] data)
+        { 
+            return Send(null, data);
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public bool Send(Dictionary<object, object> metadata, byte[] data)
+        { 
+            MemoryStream stream = null;
+            long contentLength = 0;
+
+            if (data != null && data.Length > 0)
+            {
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
+            }
+            else
+            {
+                stream = new MemoryStream(new byte[0]);
+            }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return Send(metadata, contentLength, stream);
+        }
+
+        /// <summary>
+        /// Send a message to the peer using a stream.
+        /// </summary>
+        /// <param name="contentLength">The amount of data to read from the stream.</param>
+        /// <param name="stream">The stream containing the data.</param>
+        /// <returns>True if successful.</returns>
+        public bool Send(long contentLength, Stream stream)
+        {
+            return Send(null, contentLength, stream);
+        }
+
+        /// <summary>
+        /// Send a message to the peer using a stream.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="contentLength">The amount of data to read from the stream.</param>
+        /// <param name="stream">The stream containing the data.</param>
+        /// <returns>True if successful.</returns>
+        public bool Send(Dictionary<object, object> metadata, long contentLength, Stream stream)
+        {
+            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
+            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
+
+            if (_ClusterClient != null)
+            {
+                if (_ClusterClient.Connected)
+                {
+                    return _ClusterClient.Send(metadata, contentLength, stream);
+                }
+            }
+            else if (String.IsNullOrEmpty(_CurrPeerIpPort))
+            {
+                Logger?.Invoke("[ClusterNode] No peer connected");
+                return false;
+            }
+            else if (_ClusterServer != null)
+            {
+                if (_ClusterServer.IsConnected(_CurrPeerIpPort))
+                {
+                    return _ClusterServer.Send(_CurrPeerIpPort, metadata, contentLength, stream);
+                }
+            }
+
+            Logger?.Invoke("[ClusterNode] Neither server or client are healthy");
+            return false;
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public async Task<bool> SendAsync(string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(null, Encoding.UTF8.GetBytes(data));
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public async Task<bool> SendAsync(Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public async Task<bool> SendAsync(byte[] data)
+        {
+            return await SendAsync(null, data);
+        }
+
+        /// <summary>
+        /// Send a message to the peer.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="data">Data to send to the peer node.</param>
+        /// <returns>True if successful.</returns>
+        public async Task<bool> SendAsync(Dictionary<object, object> metadata, byte[] data)
         {
             MemoryStream stream = null;
             long contentLength = 0;
@@ -267,7 +407,7 @@ namespace WatsonCluster
             }
 
             stream.Seek(0, SeekOrigin.Begin);
-            return await Send(contentLength, stream);
+            return await SendAsync(metadata, contentLength, stream);
         }
 
         /// <summary>
@@ -276,7 +416,19 @@ namespace WatsonCluster
         /// <param name="contentLength">The amount of data to read from the stream.</param>
         /// <param name="stream">The stream containing the data.</param>
         /// <returns>True if successful.</returns>
-        public async Task<bool> Send(long contentLength, Stream stream)
+        public async Task<bool> SendAsync(long contentLength, Stream stream)
+        {
+            return await SendAsync(null, contentLength, stream);
+        }
+
+        /// <summary>
+        /// Send a message to the peer using a stream.
+        /// </summary>
+        /// <param name="metadata">Dictionary containing metadata.</param>
+        /// <param name="contentLength">The amount of data to read from the stream.</param>
+        /// <param name="stream">The stream containing the data.</param>
+        /// <returns>True if successful.</returns>
+        public async Task<bool> SendAsync(Dictionary<object, object> metadata, long contentLength, Stream stream)
         {
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
@@ -285,23 +437,23 @@ namespace WatsonCluster
             {
                 if (_ClusterClient.Connected)
                 {
-                    return await _ClusterClient.Send(contentLength, stream);
+                    return await _ClusterClient.SendAsync(metadata, contentLength, stream);
                 }
             }
             else if (String.IsNullOrEmpty(_CurrPeerIpPort))
             {
-                if (Debug) Log("No peer connected");
+                Logger?.Invoke("[ClusterNode] No peer connected");
                 return false;
             }
             else if (_ClusterServer != null)
             {
                 if (_ClusterServer.IsConnected(_CurrPeerIpPort))
                 {
-                    return await _ClusterServer.Send(_CurrPeerIpPort, contentLength, stream);
+                    return await _ClusterServer.SendAsync(_CurrPeerIpPort, metadata, contentLength, stream);
                 }
             }
 
-            if (Debug) Log("Neither server or client are healthy");
+            Logger?.Invoke("[ClusterNode] Neither server or client are healthy");
             return false;
         }
 
@@ -330,36 +482,17 @@ namespace WatsonCluster
                 if (_ClusterClient != null) _ClusterClient.Dispose();
             }
         }
-
-        private void Log(string msg)
+          
+        private void SrvClientConnect(object sender, PeerConnectedEventArgs args)
         {
-            if (Debug) Console.WriteLine(msg);
-        }
-
-        private void LogException(string method, Exception e)
-        {
-            Log("");
-            Log("An exception was encountered.");
-            Log("   Method        : " + method);
-            Log("   Type          : " + e.GetType().ToString());
-            Log("   Data          : " + e.Data);
-            Log("   Inner         : " + e.InnerException);
-            Log("   Message       : " + e.Message);
-            Log("   Source        : " + e.Source);
-            Log("   StackTrace    : " + e.StackTrace);
-            Log("");
-        }
-
-        private async Task SrvClientConnect(string ipPort)
-        {
-            _CurrPeerIpPort = ipPort;
+            _CurrPeerIpPort = args.IpPort;
             if (_ClusterClient != null && _ClusterClient.Connected)
             {
-                if (ClusterHealthy != null) await ClusterHealthy();
+                ClusterHealthy?.Invoke(this, EventArgs.Empty);
             }
         }
 
-        private async Task SrvClientDisconnect(string ipPort)
+        private void SrvClientDisconnect(object sender, PeerConnectedEventArgs args)
         {
             _CurrPeerIpPort = null;
             if (ClusterUnhealthy != null)
@@ -368,27 +501,27 @@ namespace WatsonCluster
                 if (ts.TotalSeconds > 1)
                 {
                     _UnhealthyCalled = DateTime.Now;
-                    await ClusterUnhealthy();
+                    ClusterUnhealthy?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        private async Task SrvStreamReceived(string ipPort, long contentLength, Stream stream)
+        private void SrvStreamReceived(object sender, MessageReceivedEventArgs args)
         {
-            if (MessageReceived != null) await MessageReceived(contentLength, stream);
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(args.Metadata, args.ContentLength, args.DataStream));
         }
 
-        private async Task CliServerConnect()
+        private void CliServerConnect(object sender, EventArgs args)
         {
             if (_ClusterServer != null
                 && !String.IsNullOrEmpty(_CurrPeerIpPort)
                 && _ClusterServer.IsConnected(_CurrPeerIpPort))
             {
-                await ClusterHealthy();
+                ClusterHealthy?.Invoke(this, EventArgs.Empty);
             }
         }
 
-        private async Task CliServerDisconnect()
+        private void CliServerDisconnect(object sender, EventArgs args)
         {
             if (ClusterUnhealthy != null)
             {
@@ -396,14 +529,14 @@ namespace WatsonCluster
                 if (ts.TotalSeconds > 1)
                 {
                     _UnhealthyCalled = DateTime.Now;
-                    await ClusterUnhealthy();
+                    ClusterUnhealthy?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        private async Task ClientStreamReceived(long contentLength, Stream stream)
+        private void ClientStreamReceived(object sender, MessageReceivedEventArgs args)
         {
-            if (MessageReceived != null) await MessageReceived(contentLength, stream);
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(args.Metadata, args.ContentLength, args.DataStream));
         }
 
         #endregion Private-Methods

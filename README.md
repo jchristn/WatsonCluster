@@ -11,9 +11,11 @@ A simple C# class using WatsonTCP to enable a one-to-one high availability clust
 
 ![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
 
-## New in v2.0.2
+## New in v3.0.0
 
-- XML documentation
+- Breaking changes; migration from Func-based callbacks to Events
+- Added send with metadata functionality
+- Dependency update
 
 ## Contributions
 
@@ -37,35 +39,34 @@ ClusterNode node = new ClusterNode(
 
 // Set configurable parameters
 node.AcceptInvalidCertificates = true;   // if using SSL
-node.MutuallyAuthenticate = true;        // always leave as false if not using SSL
-node.Debug = false;                      // console debugging
+node.MutuallyAuthenticate = true;        // always leave as false if not using SSL 
 
-// Set your callbacks
-node.MessageReceived = MessageReceived; 
-node.ClusterHealthy = ClusterHealthy;
-node.ClusterUnhealthy = ClusterUnhealthy;
+// Set events
+node.MessageReceived += MessageReceived; 
+node.ClusterHealthy += ClusterHealthy;
+node.ClusterUnhealthy += ClusterUnhealthy;
 
-// Implement your callbacks
-static async Task ClusterHealthy()
+// Implement events
+static void ClusterHealthy(object sender, EventArgs args)
 {
-    // handle cluster healthy events
+  Console.WriteLine("Cluster is healthy!");
 }
-static async Task ClusterUnhealthy()
+
+static void ClusterUnhealthy(object sender, EventArgs args)
 {
-    // handle cluster unhealthy events
-    // don't worry, we'll try reconnecting on your behalf!
+  Console.WriteLine("Cluster is unhealthy!");
 }
-static async Task MessageReceived(long contentLength, Stream stream)
+
+static void MessageReceived(object sender, MessageReceivedEventArgs args)
 {
-    // read contentLength bytes from stream
-    // process your message
+  Console.WriteLine("New message: " + Encoding.UTF8.GetString(args.Data));
 }
 
 // Let's go!
 node.Start();
 
 // Send some messages
-await node.Send(Encoding.UTF8.GetBytes("Hello, world!"));
+await node.Send("Hello, world!");
 ```
 
 ## Test App

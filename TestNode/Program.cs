@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -45,7 +46,7 @@ namespace TestNode
                     case "send":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
-                        success = node.Send(Encoding.UTF8.GetBytes(userInput)).Result;
+                        success = node.Send(userInput);
                         if (success)
                         {
                             Console.WriteLine("Success");
@@ -56,13 +57,30 @@ namespace TestNode
                         }
                         break;
 
-                    case "send str":
+                    case "send stream":
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
                         data = Encoding.UTF8.GetBytes(userInput);
                         ms = new MemoryStream(data);
                         ms.Seek(0, SeekOrigin.Begin);
-                        success = node.Send(data.Length, ms).Result;
+                        success = node.Send(data.Length, ms);
+                        if (success)
+                        {
+                            Console.WriteLine("Success");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed");
+                        }
+                        break;
+
+                    case "send md":
+                        Console.Write("Data: ");
+                        userInput = Console.ReadLine();
+                        Dictionary<object, object> md = new Dictionary<object, object>();
+                        md.Add("Key1", "Value1");
+                        md.Add("Key2", "Value2");
+                        success = node.Send(md, userInput);
                         if (success)
                         {
                             Console.WriteLine("Success");
@@ -93,58 +111,51 @@ namespace TestNode
             node = new ClusterNode("127.0.0.1", localPort, "127.0.0.1", remotePort, null, null);
             node.AcceptInvalidCertificates = true;
             node.MutuallyAuthenticate = false;
-            node.Debug = false;
             node.PresharedKey = "0000000000000000";
 
-            node.MessageReceived = MessageReceived;
-            node.ClusterHealthy = ClusterHealthy;
-            node.ClusterUnhealthy = ClusterUnhealthy;
-
+            node.MessageReceived += MessageReceived;
+            node.ClusterHealthy += ClusterHealthy;
+            node.ClusterUnhealthy += ClusterUnhealthy;
+            node.Logger = Logger;
             node.Start();
         }
 
         private static void Menu()
         {
             Console.WriteLine("---");
-            Console.WriteLine(" q           quit");
-            Console.WriteLine(" ?           this menu");
-            Console.WriteLine(" cls         clear screen");
-            Console.WriteLine(" send        send message to peer");
-            Console.WriteLine(" send str    send message to peer using stream");
-            Console.WriteLine(" health      display cluster health");
+            Console.WriteLine(" q              quit");
+            Console.WriteLine(" ?              this menu");
+            Console.WriteLine(" cls            clear screen");
+            Console.WriteLine(" send           send message to peer");
+            Console.WriteLine(" send stream    send message to peer using stream");
+            Console.WriteLine(" health         display cluster health");
             Console.WriteLine("");
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
-        private static async Task ClusterHealthy()
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        private static void ClusterHealthy(object sender, EventArgs args)
         {
             Console.WriteLine("NOTICE: cluster is healthy");
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
-        private static async Task ClusterUnhealthy()
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        private static void ClusterUnhealthy(object sender, EventArgs args)
         {
             Console.WriteLine("NOTICE: cluster is unhealthy");
         }
 
-        private static async Task MessageReceived(long contentLength, Stream stream)
+        private static void MessageReceived(object sender, MessageReceivedEventArgs args)
         {
-            if (contentLength < 1) return;
+            if (args.ContentLength < 1) return;
 
             int bytesRead = 0;
             int bufferLen = 65536;
             byte[] buffer = new byte[bufferLen];
-            long bytesRemaining = contentLength;
+            long bytesRemaining = args.ContentLength;
 
-            Console.Write("Received " + contentLength + " bytes: ");
+            Console.Write("Received " + args.ContentLength + " bytes: ");
 
             while (bytesRemaining > 0)
             {
-                bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                bytesRead = args.DataStream.Read(buffer, 0, buffer.Length);
 
                 if (bytesRead > 0)
                 {
@@ -156,7 +167,20 @@ namespace TestNode
                 bytesRemaining -= bytesRead;
             }
 
+            if (args.Metadata != null && args.Metadata.Count > 0)
+            {
+                Console.WriteLine("");
+                Console.WriteLine("Metadata:");
+                foreach (KeyValuePair<object, object> curr in args.Metadata)
+                    Console.WriteLine("  " + curr.Key.ToString() + ": " + curr.Value.ToString());
+            }
+
             Console.WriteLine("");
+        }
+
+        private static void Logger(string msg)
+        {
+            Console.WriteLine(msg);
         }
     }
 }

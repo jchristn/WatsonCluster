@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Text;
 using System.Threading.Tasks;
 using WatsonTcp;
 
@@ -12,23 +14,20 @@ namespace WatsonCluster
     {
         #region Internal-Members
 
-        internal int ReadStreamBufferSize
+        internal int StreamBufferSize
         {
             get
             {
-                return _ReadStreamBufferSize;
+                return _StreamBufferSize;
             }
             set
             {
-                if (value < 1) throw new ArgumentException("Read stream buffer size must be greater than zero.");
-                _ReadStreamBufferSize = value;
+                if (value < 1) throw new ArgumentException("Stream buffer size must be greater than zero.");
+                _StreamBufferSize = value;
             }
         }
-
-        internal bool Debug = false;
-
-        internal bool AcceptInvalidCertificates = true;
-
+         
+        internal bool AcceptInvalidCertificates = true; 
         internal bool MutuallyAuthenticate = false;
 
         internal string PresharedKey
@@ -44,11 +43,9 @@ namespace WatsonCluster
             }
         }
 
-        internal Func<Task> ClusterHealthy = null;
-
-        internal Func<Task> ClusterUnhealthy = null;
-
-        internal Func<long, Stream, Task> MessageReceived = null;
+        internal event EventHandler ClusterHealthy;
+        internal event EventHandler ClusterUnhealthy;
+        internal event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
         internal bool Connected
         {
@@ -58,12 +55,14 @@ namespace WatsonCluster
                 return false;
             }
         }
+         
+        internal Action<string> Logger = null;
 
         #endregion Internal-Members
 
         #region Private-Members
 
-        private int _ReadStreamBufferSize = 65536;
+        private int _StreamBufferSize = 65536;
         private string _ServerIp;
         private int _ServerPort;
         private string _CertFile;
@@ -95,7 +94,87 @@ namespace WatsonCluster
             Task.Run(() => MaintainConnection());
         }
 
-        internal async Task<bool> Send(byte[] data)
+        internal bool Send(string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(null, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal bool Send(Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal bool Send(byte[] data)
+        { 
+            return Send(null, data);
+        }
+
+        internal bool Send(Dictionary<object, object> metadata, byte[] data)
+        { 
+            MemoryStream stream = null;
+            long contentLength = 0;
+
+            if (data != null && data.Length > 0)
+            {
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
+            }
+            else
+            {
+                stream = new MemoryStream(new byte[0]);
+            }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return Send(metadata, contentLength, stream);
+        }
+
+        internal bool Send(long contentLength, Stream stream)
+        {
+            return Send(null, contentLength, stream);
+        }
+
+        internal bool Send(Dictionary<object, object> metadata, long contentLength, Stream stream)
+        {
+            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
+            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
+
+            if (_WtcpClient == null)
+            {
+                Logger?.Invoke("[ClusterClient] Client is null, cannot send");
+                return false;
+            }
+
+            if (_WtcpClient.Connected)
+            {
+                return _WtcpClient.Send(metadata, contentLength, stream);
+            }
+            else
+            {
+                Logger?.Invoke("[ClusterClient] Client is not connected, cannot send");
+                return false;
+            }
+        }
+
+        internal async Task<bool> SendAsync(string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(null, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal async Task<bool> SendAsync(Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal async Task<bool> SendAsync(byte[] data)
+        {
+            return await SendAsync(null, data);
+        }
+
+        internal async Task<bool> SendAsync(Dictionary<object, object> metadata, byte[] data)
         {
             MemoryStream stream = null;
             long contentLength = 0;
@@ -111,27 +190,32 @@ namespace WatsonCluster
             }
 
             stream.Seek(0, SeekOrigin.Begin);
-            return await Send(contentLength, stream);
+            return await SendAsync(metadata, contentLength, stream);
         }
 
-        internal async Task<bool> Send(long contentLength, Stream stream)
+        internal async Task<bool> SendAsync(long contentLength, Stream stream)
+        {
+            return await SendAsync(null, contentLength, stream);
+        }
+
+        internal async Task<bool> SendAsync(Dictionary<object, object> metadata, long contentLength, Stream stream)
         {
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
 
             if (_WtcpClient == null)
             {
-                if (Debug) Log("Client is null, cannot send");
+                Logger?.Invoke("[ClusterClient] Client is null, cannot send");
                 return false;
             }
 
             if (_WtcpClient.Connected)
             {
-                return await _WtcpClient.SendAsync(contentLength, stream);
+                return await _WtcpClient.SendAsync(metadata, contentLength, stream);
             }
             else
             {
-                if (Debug) Log("Client is not connected, cannot send");
+                Logger?.Invoke("[ClusterClient] Client is not connected, cannot send");
                 return false;
             }
         }
@@ -162,7 +246,7 @@ namespace WatsonCluster
                 {
                     if (_WtcpClient == null)
                     {
-                        if (Debug) Log("Attempting connection to " + _ServerIp + ":" + _ServerPort);
+                        Logger?.Invoke("[ClusterClient] Attempting connection to " + _ServerIp + ":" + _ServerPort);
 
                         if (String.IsNullOrEmpty(_CertFile))
                         {
@@ -173,19 +257,17 @@ namespace WatsonCluster
                             _WtcpClient = new WatsonTcpClient(_ServerIp, _ServerPort, _CertFile, _CertPass);
                         }
 
-                        _WtcpClient.Debug = Debug;
-                        _WtcpClient.ReadDataStream = false;
-                        _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
+                        _WtcpClient.StreamBufferSize = StreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
 
                         _WtcpClient.AuthenticationRequested = AuthenticationRequested;
-                        _WtcpClient.AuthenticationSucceeded = AuthenticationSucceeded;
-                        _WtcpClient.AuthenticationFailure = AuthenticationFailed;
+                        _WtcpClient.AuthenticationSucceeded += AuthenticationSucceeded;
+                        _WtcpClient.AuthenticationFailure += AuthenticationFailed;
 
-                        _WtcpClient.ServerConnected = ServerConnected;
-                        _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.StreamReceived = StreamReceived;
+                        _WtcpClient.ServerConnected += ServerConnected;
+                        _WtcpClient.ServerDisconnected += ServerDisconnected;
+                        _WtcpClient.StreamReceived += StreamReceived;
 
                         _WtcpClient.Start();
                     }
@@ -199,22 +281,20 @@ namespace WatsonCluster
                         {
                             _WtcpClient = new WatsonTcpClient(_ServerIp, _ServerPort, _CertFile, _CertPass);
                         }
-
-                        _WtcpClient.Debug = Debug;
-                        _WtcpClient.ReadDataStream = false;
-                        _WtcpClient.ReadStreamBufferSize = ReadStreamBufferSize;
+                         
+                        _WtcpClient.StreamBufferSize = StreamBufferSize;
                         _WtcpClient.AcceptInvalidCertificates = AcceptInvalidCertificates;
                         _WtcpClient.MutuallyAuthenticate = MutuallyAuthenticate;
 
                         _WtcpClient.AuthenticationRequested = AuthenticationRequested;
-                        _WtcpClient.AuthenticationSucceeded = AuthenticationSucceeded;
-                        _WtcpClient.AuthenticationFailure = AuthenticationFailed;
+                        _WtcpClient.AuthenticationSucceeded += AuthenticationSucceeded;
+                        _WtcpClient.AuthenticationFailure += AuthenticationFailed;
 
-                        _WtcpClient.ServerConnected = ServerConnected;
-                        _WtcpClient.ServerDisconnected = ServerDisconnected;
-                        _WtcpClient.StreamReceived = StreamReceived;
+                        _WtcpClient.ServerConnected += ServerConnected;
+                        _WtcpClient.ServerDisconnected += ServerDisconnected;
+                        _WtcpClient.StreamReceived += StreamReceived;
 
-                        if (Debug) Log("Attempting reconnect to " + _ServerIp + ":" + _ServerPort);
+                        Logger?.Invoke("[ClusterClient] Attempting reconnection to " + _ServerIp + ":" + _ServerPort);
 
                         _WtcpClient.Start();
                     }
@@ -223,80 +303,53 @@ namespace WatsonCluster
                 }
                 catch (SocketException)
                 {
-                    Log("Unable to connect to peer");
+                    Logger?.Invoke("[ClusterClient] Unable to connect to " + _ServerIp + ":" + _ServerPort); 
                 }
                 catch (Exception e)
                 {
-                    if (Debug)
-                    {
-                        LogException("MaintainConnection", e);
-                    }
+                    Logger?.Invoke("[ClusterClient] Exception while maintaining connection: " + e.ToString());
                 }
             }
         }
-
-        private void Log(string msg)
-        {
-            if (Debug) Console.WriteLine(msg);
-        }
-
-        private void LogException(string method, Exception e)
-        {
-            Log("");
-            Log("An exception was encountered.");
-            Log("   Method        : " + method);
-            Log("   Type          : " + e.GetType().ToString());
-            Log("   Data          : " + e.Data);
-            Log("   Inner         : " + e.InnerException);
-            Log("   Message       : " + e.Message);
-            Log("   Source        : " + e.Source);
-            Log("   StackTrace    : " + e.StackTrace);
-            Log("");
-        }
-
+         
         private string AuthenticationRequested()
         {
-            Log("Authentication requested");
-            if (!String.IsNullOrEmpty(PresharedKey)) return PresharedKey;
-            throw new AuthenticationException("Preshared key not specified or not valid.");
-        }
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
-        private async Task AuthenticationSucceeded()
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-        {
-            Log("Authentication succeeded");
-        }
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
-        private async Task AuthenticationFailed()
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-        {
-            throw new AuthenticationException("Preshared key not specified or not valid.");
-        }
-
-        private async Task ServerConnected()
-        {
-            if (Debug) Log("Server " + _ServerIp + ":" + _ServerPort + " connected");
-            if (ClusterHealthy != null) await ClusterHealthy();
-        }
-
-        private async Task ServerDisconnected()
-        {
-            if (Debug) Log("Server " + _ServerIp + ":" + _ServerPort + " disconnected");
-            if (ClusterUnhealthy != null) await ClusterUnhealthy();
-        }
-
-        private async Task StreamReceived(long contentLength, Stream stream)
-        {
-            if (Debug)
+            if (!String.IsNullOrEmpty(PresharedKey))
             {
-                Log("Stream received: " + contentLength + " bytes");
+                Logger?.Invoke("[ClusterClient] Authentication requested by server, sending pre-shared key");
+                return PresharedKey;
             }
+            Logger?.Invoke("[ClusterClient] Authentication requested by server but no pre-shared key set");
+            throw new AuthenticationException("Preshared key not specified or not valid.");
+        }
+         
+        private void AuthenticationSucceeded(object sender, EventArgs args)
+        {
+            Logger?.Invoke("[ClusterClient] Authentication succeeded");
+        }
+         
+        private void AuthenticationFailed(object sender, EventArgs args) 
+        {
+            Logger?.Invoke("[ClusterClient] Authentication failed");
+            throw new AuthenticationException("Preshared key not specified or not valid.");
+        }
 
-            if (MessageReceived != null) await MessageReceived(contentLength, stream);
+        private void ServerConnected(object sender, EventArgs args)
+        {
+            Logger?.Invoke("[ClusterClient] Connected to server " + _ServerIp + ":" + _ServerPort);
+            ClusterHealthy?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ServerDisconnected(object sender, EventArgs args)
+        {
+            Logger?.Invoke("[ClusterClient] Disconnected from server " + _ServerIp + ":" + _ServerPort);
+            ClusterUnhealthy?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void StreamReceived(object sender, StreamReceivedFromServerEventArgs args)
+        {
+            Logger?.Invoke("[ClusterClient] Stream received from server: " + args.ContentLength + " bytes");
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(args.Metadata, args.ContentLength, args.DataStream));
         }
 
         #endregion Private-Methods

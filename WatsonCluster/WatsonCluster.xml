@@ -9,14 +9,9 @@
             A Watson cluster node, which includes both a cluster server and client.
             </summary>
         </member>
-        <member name="P:WatsonCluster.ClusterNode.ReadStreamBufferSize">
+        <member name="P:WatsonCluster.ClusterNode.StreamBufferSize">
             <summary>
             Buffer size to use when reading streams.  Default is 65536.
-            </summary>
-        </member>
-        <member name="F:WatsonCluster.ClusterNode.Debug">
-            <summary>
-            Enable or disable console debugging.
             </summary>
         </member>
         <member name="F:WatsonCluster.ClusterNode.AcceptInvalidCertificates">
@@ -34,19 +29,19 @@
             Preshared key for TCP authentication.
             </summary>
         </member>
-        <member name="F:WatsonCluster.ClusterNode.ClusterHealthy">
+        <member name="E:WatsonCluster.ClusterNode.ClusterHealthy">
             <summary>
-            Method to call when the cluster is healthy.
+            Event to fire when the cluster is healthy.
             </summary>
         </member>
-        <member name="F:WatsonCluster.ClusterNode.ClusterUnhealthy">
+        <member name="E:WatsonCluster.ClusterNode.ClusterUnhealthy">
             <summary>
-            Method to call when the cluster is unhealthy.
+            Event to fire when the cluster is unhealthy.
             </summary>
         </member>
-        <member name="F:WatsonCluster.ClusterNode.MessageReceived">
+        <member name="E:WatsonCluster.ClusterNode.MessageReceived">
             <summary>
-            Method to call when a message is received.
+            Event to fire when a message is received.
             </summary>
         </member>
         <member name="P:WatsonCluster.ClusterNode.IsHealthy">
@@ -54,6 +49,11 @@
             Determine if the cluster is healthy (i.e. both nodes are bidirectionally connected).
             </summary>
             <returns>True if healthy.</returns>
+        </member>
+        <member name="F:WatsonCluster.ClusterNode.Logger">
+            <summary>
+            Method to invoke when sending a log message.
+            </summary>
         </member>
         <member name="M:WatsonCluster.ClusterNode.#ctor(System.String,System.Int32,System.String,System.Int32,System.String,System.String)">
             <summary>
@@ -83,17 +83,96 @@
             Start the cluster node.
             </summary>
         </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.String)">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.Collections.Generic.Dictionary{System.Object,System.Object},System.String)">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
         <member name="M:WatsonCluster.ClusterNode.Send(System.Byte[])">
             <summary>
-            Send a message to the peer node.
+            Send a message to the peer.
             </summary>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.Collections.Generic.Dictionary{System.Object,System.Object},System.Byte[])">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
             <param name="data">Data to send to the peer node.</param>
             <returns>True if successful.</returns>
         </member>
         <member name="M:WatsonCluster.ClusterNode.Send(System.Int64,System.IO.Stream)">
             <summary>
+            Send a message to the peer using a stream.
+            </summary>
+            <param name="contentLength">The amount of data to read from the stream.</param>
+            <param name="stream">The stream containing the data.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.Send(System.Collections.Generic.Dictionary{System.Object,System.Object},System.Int64,System.IO.Stream)">
+            <summary>
+            Send a message to the peer using a stream.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
+            <param name="contentLength">The amount of data to read from the stream.</param>
+            <param name="stream">The stream containing the data.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.String)">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.Collections.Generic.Dictionary{System.Object,System.Object},System.String)">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.Byte[])">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.Collections.Generic.Dictionary{System.Object,System.Object},System.Byte[])">
+            <summary>
+            Send a message to the peer.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
+            <param name="data">Data to send to the peer node.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.Int64,System.IO.Stream)">
+            <summary>
             Send a message to the peer node using a stream.
             </summary>
+            <param name="contentLength">The amount of data to read from the stream.</param>
+            <param name="stream">The stream containing the data.</param>
+            <returns>True if successful.</returns>
+        </member>
+        <member name="M:WatsonCluster.ClusterNode.SendAsync(System.Collections.Generic.Dictionary{System.Object,System.Object},System.Int64,System.IO.Stream)">
+            <summary>
+            Send a message to the peer using a stream.
+            </summary>
+            <param name="metadata">Dictionary containing metadata.</param>
             <param name="contentLength">The amount of data to read from the stream.</param>
             <param name="stream">The stream containing the data.</param>
             <returns>True if successful.</returns>
@@ -108,6 +187,43 @@
             Dispose of resources.
             </summary>
             <param name="disposing">Disposing.</param>
+        </member>
+        <member name="T:WatsonCluster.MessageReceivedEventArgs">
+            <summary>
+            Event arguments for when a stream is received from the server.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.MessageReceivedEventArgs.Metadata">
+            <summary>
+            The metadata received from the server.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.MessageReceivedEventArgs.ContentLength">
+            <summary>
+            The number of data bytes that should be read from DataStream.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.MessageReceivedEventArgs.DataStream">
+            <summary>
+            The stream containing the message data.
+            Note: if you access Data, the stream in DataStream will be fully read.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.MessageReceivedEventArgs.Data">
+            <summary>
+            The byte array containing the message data.
+            Note: if you access Data, the stream in DataStream will be fully read.
+            </summary>
+        </member>
+        <member name="T:WatsonCluster.PeerConnectedEventArgs">
+            <summary>
+            Event arguments for when a peer connects.
+            </summary>
+        </member>
+        <member name="P:WatsonCluster.PeerConnectedEventArgs.IpPort">
+            <summary>
+            The IP:port of the peer.
+            </summary>
         </member>
     </members>
 </doc>

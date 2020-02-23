@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using WatsonTcp;
 
@@ -11,23 +12,20 @@ namespace WatsonCluster
     {
         #region Internal-Members
 
-        internal int ReadStreamBufferSize
+        internal int StreamBufferSize
         {
             get
             {
-                return _ReadStreamBufferSize;
+                return _StreamBufferSize;
             }
             set
             {
-                if (value < 1) throw new ArgumentException("Read stream buffer size must be greater than zero.");
-                _ReadStreamBufferSize = value;
+                if (value < 1) throw new ArgumentException("Stream buffer size must be greater than zero.");
+                _StreamBufferSize = value;
             }
         }
-
-        internal bool Debug = false;
-
-        internal bool AcceptInvalidCertificates = true;
-
+         
+        internal bool AcceptInvalidCertificates = true; 
         internal bool MutuallyAuthenticate = false;
 
         internal string PresharedKey
@@ -43,17 +41,17 @@ namespace WatsonCluster
             }
         }
 
-        internal Func<string, Task> ClientConnected = null;
+        internal event EventHandler<PeerConnectedEventArgs> ClientConnected;
+        internal event EventHandler<PeerConnectedEventArgs> ClientDisconnected;
+        internal event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
-        internal Func<string, Task> ClientDisconnected = null;
-
-        internal Func<string, long, Stream, Task> MessageReceived = null;
+        internal Action<string> Logger = null;
 
         #endregion Internal-Members
 
         #region Private-Members
 
-        private int _ReadStreamBufferSize = 65536;
+        private int _StreamBufferSize = 65536;
         private string _ListenerIp;
         private int _ListenerPort;
         private List<string> _PermittedIps;
@@ -102,7 +100,7 @@ namespace WatsonCluster
         {
             if (_WtcpServer == null)
             {
-                if (Debug) Log("Server is null");
+                Logger?.Invoke("[ClusterServer] Server is null");
                 return false;
             }
             if (String.IsNullOrEmpty(ipPort)) return false;
@@ -119,25 +117,38 @@ namespace WatsonCluster
             {
                 _WtcpServer = new WatsonTcpServer(_ListenerIp, _ListenerPort, _CertFile, _CertPass);
             }
-
-            _WtcpServer.Debug = Debug;
-            _WtcpServer.ReadDataStream = false;
-            _WtcpServer.ReadStreamBufferSize = ReadStreamBufferSize;
+             
+            _WtcpServer.StreamBufferSize = StreamBufferSize;
             _WtcpServer.AcceptInvalidCertificates = AcceptInvalidCertificates;
             _WtcpServer.MutuallyAuthenticate = MutuallyAuthenticate;
             _WtcpServer.PresharedKey = PresharedKey;
 
-            _WtcpServer.ClientConnected = ClientConnect;
-            _WtcpServer.ClientDisconnected = ClientDisconnect;
-            _WtcpServer.StreamReceived = StrmReceived;
+            _WtcpServer.ClientConnected += ClientConnect;
+            _WtcpServer.ClientDisconnected += ClientDisconnect;
+            _WtcpServer.StreamReceived += StreamReceived;
 
             _WtcpServer.Start();
         }
 
-        internal async Task<bool> Send(string ipPort, byte[] data)
+        internal bool Send(string ipPort, string data)
         {
-            if (String.IsNullOrEmpty(ipPort)) throw new ArgumentNullException(nameof(ipPort));
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(ipPort, null, Encoding.UTF8.GetBytes(data));
+        }
 
+        internal bool Send(string ipPort, Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return Send(ipPort, metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal bool Send(string ipPort, byte[] data)
+        {
+            return Send(ipPort, null, data);
+        }
+
+        internal bool Send(string ipPort, Dictionary<object, object> metadata, byte[] data)
+        { 
             MemoryStream stream = null;
             long contentLength = 0;
 
@@ -152,28 +163,99 @@ namespace WatsonCluster
             }
 
             stream.Seek(0, SeekOrigin.Begin);
-            return await Send(ipPort, contentLength, stream);
+            return Send(ipPort, metadata, contentLength, stream); 
         }
 
-        internal async Task<bool> Send(string ipPort, long contentLength, Stream stream)
+        internal bool Send(string ipPort, long contentLength, Stream stream)
         {
+            return Send(ipPort, null, contentLength, stream);
+        }
+
+        internal bool Send(string ipPort, Dictionary<object, object> metadata, long contentLength, Stream stream)
+        {
+            if (String.IsNullOrEmpty(ipPort)) throw new ArgumentNullException(nameof(ipPort));
             if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
             if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
 
             if (_WtcpServer == null)
             {
-                if (Debug) Log("Server is null, cannot send");
+                Logger?.Invoke("[ClusterServer] Server is null, cannot send");
                 return false;
             }
             if (_WtcpServer.IsClientConnected(ipPort))
             {
-                return await _WtcpServer.SendAsync(ipPort, contentLength, stream);
+                return _WtcpServer.Send(ipPort, metadata, contentLength, stream);
             }
             else
             {
-                if (Debug) Log("Server is not connected, cannot send");
+                Logger?.Invoke("[ClusterServer] Server is not connected, cannot send");
                 return false;
             }
+
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(ipPort, null, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, Dictionary<object, object> metadata, string data)
+        {
+            if (String.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            return await SendAsync(ipPort, metadata, Encoding.UTF8.GetBytes(data));
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, byte[] data)
+        {
+            return await SendAsync(ipPort, null, data);
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, Dictionary<object, object> metadata, byte[] data)
+        {  
+            MemoryStream stream = null;
+            long contentLength = 0;
+
+            if (data != null && data.Length > 0)
+            {
+                stream = new MemoryStream(data);
+                contentLength = data.Length;
+            }
+            else
+            {
+                stream = new MemoryStream(new byte[0]);
+            }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return await SendAsync(ipPort, metadata, contentLength, stream);
+
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, long contentLength, Stream stream)
+        {
+            return await SendAsync(ipPort, null, contentLength, stream);
+        }
+
+        internal async Task<bool> SendAsync(string ipPort, Dictionary<object, object> metadata, long contentLength, Stream stream)
+        {
+            if (String.IsNullOrEmpty(ipPort)) throw new ArgumentNullException(nameof(ipPort));
+            if (contentLength < 0) throw new ArgumentException("Content length must be zero or greater.");
+            if (stream == null || !stream.CanRead) throw new ArgumentException("Cannot read from supplied stream.");
+
+            if (_WtcpServer == null)
+            {
+                Logger?.Invoke("[ClusterServer] Server is null, cannot send");
+                return false;
+            }
+            if (_WtcpServer.IsClientConnected(ipPort))
+            {
+                return await _WtcpServer.SendAsync(ipPort, metadata, contentLength, stream);
+            }
+            else
+            {
+                Logger?.Invoke("[ClusterServer] Server is not connected, cannot send");
+                return false;
+            } 
         }
 
         public void Dispose()
@@ -193,46 +275,23 @@ namespace WatsonCluster
                 if (_WtcpServer != null) _WtcpServer.Dispose();
             }
         }
-
-        private void Log(string msg)
+         
+        private void ClientConnect(object sender, ClientConnectedEventArgs args)
         {
-            if (Debug) Console.WriteLine(msg);
+            Logger?.Invoke("[ClusterServer] Client " + args.IpPort + " connected");
+            ClientConnected?.Invoke(this, new PeerConnectedEventArgs(args.IpPort)); 
         }
 
-        private void LogException(string method, Exception e)
+        private void ClientDisconnect(object sender, ClientDisconnectedEventArgs args)
         {
-            Log("");
-            Log("An exception was encountered.");
-            Log("   Method        : " + method);
-            Log("   Type          : " + e.GetType().ToString());
-            Log("   Data          : " + e.Data);
-            Log("   Inner         : " + e.InnerException);
-            Log("   Message       : " + e.Message);
-            Log("   Source        : " + e.Source);
-            Log("   StackTrace    : " + e.StackTrace);
-            Log("");
+            Logger?.Invoke("[ClusterServer] Client " + args.IpPort + " disconnected");
+            ClientDisconnected?.Invoke(this, new PeerConnectedEventArgs(args.IpPort));
         }
 
-        private async Task ClientConnect(string ipPort)
+        private void StreamReceived(object sender, StreamReceivedFromClientEventArgs args)
         {
-            if (Debug) Log("Client " + ipPort + " connected");
-            if (ClientConnected != null) await ClientConnected(ipPort);
-        }
-
-        private async Task ClientDisconnect(string ipPort)
-        {
-            if (Debug) Log("Client " + ipPort + " disconnected");
-            if (ClientDisconnected != null) await ClientDisconnected(ipPort);
-        }
-
-        private async Task StrmReceived(string ipPort, long contentLength, Stream stream)
-        {
-            if (Debug)
-            {
-                Log("Stream received from " + ipPort + ": " + contentLength + " bytes");
-            }
-
-            if (MessageReceived != null) await MessageReceived(ipPort, contentLength, stream);
+            Logger?.Invoke("[ClusterServer] Stream received from " + args.IpPort + ": " + args.ContentLength + " bytes");
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(args.Metadata, args.ContentLength, args.DataStream));
         }
 
         #endregion Private-Methods

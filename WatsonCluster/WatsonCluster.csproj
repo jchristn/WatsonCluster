@@ -3,27 +3,27 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).</Description>
-    <Version>2.0.2</Version>
+    <Description>A simple C# class using Watson TCP to enable a one-to-one high availability cluster.  Events are used to notify the encompassing application when the cluster is healthy (client and server connected), unhealthy (client or server disconnected), or a message is received.</Description>
+    <Version>3.0.0</Version>
     <Authors>Joel Christner</Authors>
-    <Copyright>(c)2019 Joel Christner</Copyright>
+    <Copyright>(c)2020 Joel Christner</Copyright>
     <PackageProjectUrl>https://github.com/jchristn/watsoncluster</PackageProjectUrl>
     <RepositoryUrl>https://github.com/jchristn/watsoncluster</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>tcp rpc api cluster high availability</PackageTags>
-    <PackageReleaseNotes>Dependency update for more reliable disconnect detection and handling</PackageReleaseNotes>
+    <PackageReleaseNotes>Migrate from Func-based callbacks to Events.  Add metadata send and receive support.</PackageReleaseNotes>
     <PackageIconUrl>https://raw.githubusercontent.com/jchristn/watsoncluster/master/assets/watson.ico</PackageIconUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
-    <DocumentationFile>C:\Code\Watson\WatsonCluster-2.0\WatsonCluster\WatsonCluster.xml</DocumentationFile>
+    <DocumentationFile>C:\Code\Watson\WatsonCluster-3.0\WatsonCluster\WatsonCluster.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
-    <PackageReference Include="WatsonTcp" Version="2.0.6" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="WatsonTcp" Version="3.0.1" />
   </ItemGroup>
 
   <ItemGroup>
