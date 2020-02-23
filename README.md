@@ -7,7 +7,7 @@
 [nuget]:     https://www.nuget.org/packages/WatsonCluster/
 [nuget-img]: https://badge.fury.io/nu/Object.svg
 
-A simple C# class using WatsonTCP to enable a one-to-one high availability cluster targeted to .NET Core and .NET Framework, with or without SSL.  Callbacks are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).
+Watson Cluster is the simplest, easiest, and fastest way to build highly-available applications using traditional 1+1 clustering.  Watson Cluster enables a one-to-one high availability cluster and is targeted to .NET Core and .NET Framework, with or without SSL.  Events are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).
 
 ![alt tag](https://github.com/jchristn/WatsonCluster/blob/master/assets/image.png)
 
