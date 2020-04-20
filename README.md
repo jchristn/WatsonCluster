@@ -2,10 +2,7 @@
 
 # Watson Cluster
 
-[![][nuget-img]][nuget]
-
-[nuget]:     https://www.nuget.org/packages/WatsonCluster/
-[nuget-img]: https://badge.fury.io/nu/Object.svg
+[![NuGet Version](https://img.shields.io/nuget/v/WatsonCluster.svg?style=flat)](https://www.nuget.org/packages/WatsonCluster/) [![NuGet](https://img.shields.io/nuget/dt/WatsonCluster.svg)](https://www.nuget.org/packages/WatsonCluster) 
 
 Watson Cluster is the simplest, easiest, and fastest way to build highly-available applications using traditional 1+1 clustering.  Watson Cluster enables a one-to-one high availability cluster and is targeted to .NET Core and .NET Framework, with or without SSL.  Events are used to notify the encompassing application when the cluster is healthy (client and server connected) or unhealthy (client or server disconnected).
 
