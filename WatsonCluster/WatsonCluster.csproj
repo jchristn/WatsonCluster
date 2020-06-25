@@ -15,7 +15,15 @@
     <PackageReleaseNotes>Migrate from Func-based callbacks to Events.  Add metadata send and receive support.</PackageReleaseNotes>
     <PackageIconUrl>https://raw.githubusercontent.com/jchristn/watsoncluster/master/assets/watson.ico</PackageIconUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
     <DocumentationFile>C:\Code\Watson\WatsonCluster-3.0\WatsonCluster\WatsonCluster.xml</DocumentationFile>
