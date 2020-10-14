@@ -22,7 +22,7 @@ Thanks to @brudo for adding async support to WatsonCluster (v1.0.6) and all of y
 
 Refer to the ```TestNode``` project for a full example.
 
-```
+```csharp
 using WatsonCluster; 
 
 // Initialize
